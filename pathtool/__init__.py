@@ -1,1 +1,1 @@
-#from .pathtool import pathtool
+from .pathtool import path_exists
