@@ -1,4 +1,5 @@
 from .pathtool import empty_file
+from .pathtool import file_exists_nonzero
 from .pathtool import get_file_size
 from .pathtool import get_path_with_most_free_space
 from .pathtool import path_exists
