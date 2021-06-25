@@ -34,7 +34,7 @@ from signal import SIGPIPE
 from signal import signal
 
 import click
-import magic  # sys-apps/file  #PIA
+#import magic  # sys-apps/file  #PIA
 from asserttool import verify
 from hasher import sha3_256_hash_file
 from retry_on_exception import retry_on_exception
@@ -538,9 +538,9 @@ def is_regular_file(path):
     return False
 
 
-def get_file_type(path):
-    line_id = magic.from_file(path)
-    return line_id
+#def get_file_type(path):
+#    line_id = magic.from_file(path)
+#    return line_id
 
 
 def combine_files(source, destination, buffer=65535):
