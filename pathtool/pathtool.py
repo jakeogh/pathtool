@@ -51,7 +51,7 @@ from enumerate_input import enumerate_input
 
 #from with_chdir import chdir
 
-#from kcl.pathops import path_is_block_special
+#from pathtool import path_is_block_special
 #from getdents import files
 #from prettytable import PrettyTable
 #output_table = PrettyTable()
