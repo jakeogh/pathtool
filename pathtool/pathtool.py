@@ -224,7 +224,7 @@ def cli(ctx,
                                        tail=tail,
                                        debug=debug,
                                        verbose=verbose,):
-        path = Path(path)
+        path = Path(path).expanduser()
 
         if verbose:  # or simulate:
             ic(index, path)
@@ -370,15 +370,16 @@ def uncomment_line_in_file(*,
                     errno=errno.ENOSPC,)
 def write_line_to_file(*,
                        line,
-                       file_to_write,
+                       path: Path,
                        verbose: bool,
                        debug: bool,
                        unique: bool = False,
                        make_new: bool = True,):
     '''
-    Write line to file_to_write
-    if unique_line == True, write line iff line not in file_to_write.
+    Write line to path
+    if unique_line == True, write line iff line not in path.
     '''
+    path = Path(path).expanduser()
     if isinstance(line, str):
         line = line.encode('UTF8')
     assert isinstance(line, bytes)
@@ -386,7 +387,7 @@ def write_line_to_file(*,
     assert line.endswith(b'\n')
 
     try:
-        with open(file_to_write, 'rb+') as fh:
+        with open(path, 'rb+') as fh:
             if not unique:
                 fh.write(line)
                 return True
@@ -398,7 +399,7 @@ def write_line_to_file(*,
 
     except FileNotFoundError as e:
         if make_new:
-            with open(file_to_write, 'xb') as fh:
+            with open(path, 'xb') as fh:
                 fh.write(line)
                 return True
         else:
@@ -720,7 +721,7 @@ def path_is_block_special(path, follow_symlinks=False):
 
 def path_is_file(path: Path):
     if not isinstance(path, Path):
-        path = Path(path)
+        path = Path(path).expanduser()
     if path.is_symlink():
         return False
     if os.path.isfile(path): #unlike os.path.exists(False), os.path.isfile(False) returns False so no need to call path_exists() first.
