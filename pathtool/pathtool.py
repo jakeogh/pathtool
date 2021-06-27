@@ -374,7 +374,8 @@ def write_line_to_file(*,
                        verbose: bool,
                        debug: bool,
                        unique: bool = False,
-                       make_new: bool = True,):
+                       make_new: bool = True,
+                       ) -> bool:
     '''
     Write line to path
     if unique_line == True, write line iff line not in path.
