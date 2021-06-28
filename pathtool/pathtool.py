@@ -39,7 +39,7 @@ from asserttool import verify
 from hashtool import sha3_256_hash_file
 from retry_on_exception import retry_on_exception
 
-signal(SIGPIPE,SIG_DFL)
+signal(SIGPIPE, SIG_DFL)
 from typing import ByteString
 from typing import Generator
 from typing import Iterable
@@ -50,12 +50,6 @@ from typing import Sequence
 from enumerate_input import enumerate_input
 
 #from with_chdir import chdir
-
-#from pathtool import path_is_block_special
-#from getdents import files
-#from prettytable import PrettyTable
-#output_table = PrettyTable()
-
 
 
 def eprint(*args, **kwargs):
@@ -78,21 +72,6 @@ def validate_slice(slice_syntax):
         if c not in ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '-', '[', ']', ':']:
             raise ValueError(slice_syntax)
     return slice_syntax
-
-
-#@with_plugins(iter_entry_points('click_command_tree'))
-#@click.group()
-#@click.option('--verbose', is_flag=True)
-#@click.option('--debug', is_flag=True)
-#@click.pass_context
-#def cli(ctx,
-#        verbose: bool,
-#        debug: bool,
-#        ):
-#
-#    ctx.ensure_object(dict)
-#    ctx.obj['verbose'] = verbose
-#    ctx.obj['debug'] = debug
 
 
 def nl_iff_tty(*, printn, ipython):
