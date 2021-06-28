@@ -2,6 +2,7 @@ from .pathtool import empty_file
 from .pathtool import file_exists_nonzero
 from .pathtool import get_file_size
 from .pathtool import get_path_with_most_free_space
+from .pathtool import is_regular_file
 from .pathtool import path_exists
 from .pathtool import path_is_block_special
 from .pathtool import path_is_file
