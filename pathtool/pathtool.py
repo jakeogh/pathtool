@@ -36,7 +36,7 @@ from signal import signal
 import click
 #import magic  # sys-apps/file  #PIA
 from asserttool import verify
-from hasher import sha3_256_hash_file
+from hashtool import sha3_256_hash_file
 from retry_on_exception import retry_on_exception
 
 signal(SIGPIPE,SIG_DFL)
