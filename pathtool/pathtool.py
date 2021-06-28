@@ -64,6 +64,16 @@ except ImportError:
     ic = eprint
 
 
+def cli_path(path: str, verbose: bool, debug: bool,):
+    # problem, Path('~').expanduser() is ambigious
+    # when there is a file named ~ in CWD
+    # the obvious solution is to make the user specify
+    # Path('./~') which .expanduser().... uug... .expanduser()
+    # incorrectly resolves ./~ to /home/user.
+    # sooo... is there no way to specify the ~ file without an absolute path?
+    pass
+
+
 def validate_slice(slice_syntax: str):
     assert isinstance(slice_syntax, str)
     for c in slice_syntax:
@@ -393,10 +403,6 @@ def temp_fifo(verbose=False):
     finally:
         os.unlink(filename)  # Remove file
         os.rmdir(tmpdir)  # Remove directory
-
-
-
-
 
 
 def get_free_space_at_path(*,
