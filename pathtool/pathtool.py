@@ -64,9 +64,7 @@ except ImportError:
     ic = eprint
 
 
-
-
-def validate_slice(slice_syntax):
+def validate_slice(slice_syntax: str):
     assert isinstance(slice_syntax, str)
     for c in slice_syntax:
         if c not in ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '-', '[', ']', ':']:
