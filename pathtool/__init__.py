@@ -1,4 +1,8 @@
+#from .pathtool import is_unbroken_symlink_to_target
+from .pathtool import backup_file_if_exists
 from .pathtool import check_or_create_dir
+from .pathtool import comment_out_line_in_file
+from .pathtool import create_relative_symlink
 from .pathtool import empty_file
 from .pathtool import file_exists_nonzero
 from .pathtool import get_file_size
@@ -18,4 +22,5 @@ from .pathtool import remove_empty_folders
 from .pathtool import symlink_destination
 from .pathtool import symlink_or_exit
 from .pathtool import target_generator
+from .pathtool import uncomment_line_in_file
 from .pathtool import write_line_to_file
