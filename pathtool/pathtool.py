@@ -426,10 +426,11 @@ def mkdir_or_exit(folder,
 
 
 def comment_out_line_in_file(*,
-                             file_path,
+                             path,
                              line_to_match: str,
                              verbose: bool,
                              debug: bool,
+                             startswith: bool = False,
                              ):
     '''
     add a # to the beginning of all instances of line_to_match
@@ -441,7 +442,7 @@ def comment_out_line_in_file(*,
     if line_to_match is found and all instances already commented return True
     if line_to_match is not found return False
     '''
-    with open(file_path, 'r') as rfh:  # bug should hold the fh
+    with open(path, 'r') as rfh:  # bug should hold the fh
         lines = rfh.read().splitlines()
     newlines = []
     #commented = False
@@ -449,7 +450,7 @@ def comment_out_line_in_file(*,
         if line_to_match in line:
             line_stripped = line.strip()
             if line_stripped.startswith('#'):
-                newlines.append(line)
+                newlines.append(line)  # match is already commented out
                 continue
             if line_stripped == line:
                 newlines.append('#' + line)
@@ -458,14 +459,14 @@ def comment_out_line_in_file(*,
             continue
         newlines.append(line)
     if lines != newlines:
-        with open(file_path, 'w') as rfh:
+        with open(path, 'w') as rfh:
             rfh.write('\n'.join(newlines) + '\n')
         return True
     return True
 
 
 def uncomment_line_in_file(*,
-                           file_path,
+                           path,
                            line_to_match: str,
                            verbose: bool,
                            debug: bool,
@@ -480,7 +481,7 @@ def uncomment_line_in_file(*,
     if line_to_match is found and all instances already uncommented return True
     if line_to_match is not found return False
     '''
-    with open(file_path, 'r') as rfh:  # bug should hold the fh
+    with open(path, 'r') as rfh:  # bug should hold the fh
         lines = rfh.read().splitlines()
     newlines = []
     uncommented = False
@@ -499,7 +500,7 @@ def uncomment_line_in_file(*,
             continue
         newlines.append(line)
     if lines != newlines:
-        with open(file_path, 'w') as rfh:
+        with open(path, 'w') as rfh:
             rfh.write('\n'.join(newlines) + '\n')
         return True
     if uncommented:
