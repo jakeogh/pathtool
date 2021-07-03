@@ -35,6 +35,7 @@ from signal import signal
 
 import click
 #import magic  # sys-apps/file  #PIA
+from asserttool import nevd
 from asserttool import verify
 from hashtool import sha3_256_hash_file
 from retry_on_exception import retry_on_exception
@@ -50,6 +51,8 @@ from typing import Sequence
 from enumerate_input import enumerate_input
 
 #from with_chdir import chdir
+
+
 
 
 def eprint(*args, **kwargs):
@@ -82,41 +85,93 @@ def validate_slice(slice_syntax: str):
     return slice_syntax
 
 
-def nl_iff_tty(*, printn, ipython):
-    null = not printn
-    end = '\n'
-    if null:
-        end = '\x00'
-    if sys.stdout.isatty():
-        end = '\n'
-        assert not ipython
-    return end
+#def path_is_dir(path):
+#    if os.path.isdir(path):  # could still be a symlink
+#        if os.path.islink(path):
+#            return False
+#        return True
+#    return False
 
 
-def nevd(*, ctx,
-         printn: bool,
-         ipython: bool,
-         verbose: bool,
-         debug: bool,
-         ):
+from signal import SIG_DFL
+from signal import SIGPIPE
+from signal import signal
 
-    null = not printn
-    end = nl_iff_tty(printn=printn, ipython=False)
+from psutil import disk_usage
+
+signal(SIGPIPE,SIG_DFL)
+from typing import ByteString
+from typing import Generator
+from typing import Iterable
+from typing import List
+from typing import Optional
+from typing import Sequence
+
+#from with_chdir import chdir
+
+#from pathtool import path_is_block_special
+#from getdents import files
+
+
+def is_broken_symlink(path):
+    if os.path.islink(path):  # path is a symlink
+        return not os.path.exists(path)  # returns False for broken symlinks
+    return False  # path isnt a symlink
+
+
+def is_unbroken_symlink(path):
+    if os.path.islink(path):  # path is a symlink
+        return os.path.exists(path)  # returns False for broken symlinks
+    return False  # path isnt a symlink
+
+
+def symlink_or_exit(target,
+                    link_name,
+                    confirm: bool = False,
+                    verbose: bool = False,
+                    ):
     if verbose:
-        ctx.obj['verbose'] = verbose
-    verbose = ctx.obj['verbose']
-    if debug:
-        ctx.obj['debug'] = debug
-    debug = ctx.obj['debug']
+        ic(target)
+        ic(link_name)
 
-    return null, end, verbose, debug
+    if confirm:
+        input("press enter to os.symlink({}, {})".format(target, link_name))
+
+    try:
+        os.symlink(target, link_name)
+    except Exception as e:
+        eprint('Got Exception: %s', e)
+        eprint('Unable to symlink link_name: %s to target: %s Exiting.' % (link_name, target))
+        raise e
+
+
+def mkdir_or_exit(folder,
+                  confirm: bool,
+                  verbose: bool,
+                  user: str = None,
+                  ):
+    if verbose:
+        ic(folder)
+    if confirm:
+        input("press enter to os.makedirs({})".format(folder))
+    try:
+        os.makedirs(folder)
+    except FileExistsError:
+        assert path_is_dir(folder)
+    except Exception as e:
+        ic("Exception: %s", e)
+        ic("Unable to os.mkdir(%s). Exiting.", folder)
+        sys.exit(1)
+    if user:
+        shutil.chown(folder, user=user, group=user)
 
 
 def comment_out_line_in_file(*,
                              file_path,
                              line_to_match: str,
                              verbose: bool,
-                             debug: bool,):
+                             debug: bool,
+                             ):
     '''
     add a # to the beginning of all instances of line_to_match
     iff there is not already a # preceding line_to_match and
@@ -154,7 +209,8 @@ def uncomment_line_in_file(*,
                            file_path,
                            line_to_match: str,
                            verbose: bool,
-                           debug: bool,):
+                           debug: bool,
+                           ):
     '''
     remove # from the beginning of all instances of line_to_match
     iff there is already a # preceding line_to_match and
@@ -237,7 +293,8 @@ def line_exists_in_file(*,
                         line,
                         file_to_check,
                         verbose: bool,
-                        debug: bool,):
+                        debug: bool,
+                        ):
     if isinstance(line, str):
         line = line.encode('UTF8')
     assert isinstance(line, bytes)
@@ -289,7 +346,9 @@ def get_file_size(filename):
     return size
 
 
-def points_to_data(fpath, empty_ok=False):
+def points_to_data(fpath,
+                   empty_ok: bool = False,
+                   ):
     assert isinstance(fpath, (str, bytes, Path))
     try:
         size = os.path.getsize(fpath)  # annoyingly, os.stat(False) == os.stat(0) == os.stat('/dev/stdout')
@@ -333,7 +392,7 @@ def rename_or_exit(src, dest):
     except Exception as e:
         eprint("Got Exception: %s", e)
         eprint("Unable to rename src: %s to dest: %s Exiting.", src, dest)
-        os._exit(1)
+        sys.exit(1)
 
 
 def move_file_only_if_new_or_exit(source, dest):
@@ -342,7 +401,7 @@ def move_file_only_if_new_or_exit(source, dest):
     except Exception as e:
         eprint("Exception: %s", e)
         eprint("move_file_only_if_new_or_exit(): error. Exiting.")
-        os._exit(1)
+        sys.exit(1)
 
 
 def write_file(infile, data):
@@ -391,7 +450,8 @@ def combine_files(source, destination, buffer=65535):
 # https://github.com/twisted/twisted/blob/trunk/twisted/python/filepath.py
 # https://stackoverflow.com/questions/1430446/create-a-temporary-fifo-named-pipe-in-python
 @contextmanager
-def temp_fifo(verbose=False):
+def temp_fifo(verbose: bool = False,
+              ):
     """Context Manager for creating named pipes with temporary names."""
     tmpdir = tempfile.mkdtemp()
     filename = os.path.join(tmpdir, 'fifo')  # Temporary filename
@@ -408,7 +468,8 @@ def temp_fifo(verbose=False):
 def get_free_space_at_path(*,
                            path: Path,
                            verbose: bool,
-                           debug: bool,):
+                           debug: bool,
+                           ):
     assert isinstance(path, Path)
     free_bytes = os.statvfs(path).f_ffree
     if verbose:
@@ -419,7 +480,8 @@ def get_free_space_at_path(*,
 def get_path_with_most_free_space(*,
                                   pathlist: [Path],
                                   verbose: bool,
-                                  debug: bool,):
+                                  debug: bool,
+                                  ):
     ic(pathlist)
     largest = ()
     for path in pathlist:
@@ -453,7 +515,8 @@ def paths_are_identical(path1,
                         *,
                         time: bool = False,
                         perms: bool = False,
-                        verbose: bool = False,):
+                        verbose: bool = False,
+                        ):
     verify(isinstance(path1, Path))
     verify(isinstance(path2, Path))
     if time or perms:
@@ -531,10 +594,12 @@ def path_is_dir_or_symlink_to_dir(path):
 def path_exists(path):
     if path is None:
         return False
-    return os.path.lexists(path) #returns True for broken symlinks
+    return os.path.lexists(path) #  returns True for broken symlinks
 
 
-def path_is_block_special(path, follow_symlinks=False):
+def path_is_block_special(path,
+                          follow_symlinks: bool = False,
+                          ):
     if path_exists(path):
         mode = os.stat(path, follow_symlinks=follow_symlinks).st_mode
         if stat.S_ISBLK(mode):
@@ -547,9 +612,66 @@ def path_is_file(path: Path):
         path = Path(path).expanduser()
     if path.is_symlink():
         return False
-    if os.path.isfile(path): #unlike os.path.exists(False), os.path.isfile(False) returns False so no need to call path_exists() first.
+
+    # unlike os.path.exists(False), os.path.isfile(False) returns False so no need to call path_exists() first.
+    if os.path.isfile(path):
         return True
     return False
+
+
+def check_or_create_dir(folder, confirm=True):
+    #assert isinstance(folder, bytes)
+    if not os.path.isdir(folder):
+        if confirm:
+            eprint("The folder:")
+            eprint(folder)
+            eprint("does not exist. Type yes to create it and continue, otherwise exiting:")
+            eprint("make dir:")
+            eprint(folder, end=None)
+            make_folder_answer = input(": ")
+            if make_folder_answer.lower() != "yes":
+                eprint("Exiting before mkdir.")
+                os._exit(1)
+        create_dir(folder)
+        return True
+
+
+def create_dir(folder):
+    try:
+        os.makedirs(folder, exist_ok=True)
+    except FileExistsError:
+        pass
+
+
+def chdir_or_exit(targetdir):
+    try:
+        os.chdir(targetdir)
+    except Exception as e:
+        eprint("Exception:", e)
+        eprint("Unable to os.chdir(%s). Enxiting.", targetdir)
+        os._exit(1)
+    return True
+
+
+def remove_empty_folders(path, remove_root=True, verbose=False):
+    if not os.path.isdir(path):
+        return
+
+    # remove empty subfolders
+    files = os.listdir(path)
+    if len(files):
+        for f in files:
+            fullpath = os.path.join(path, f)
+            if os.path.isdir(fullpath):
+                if not os.path.islink(fullpath):
+                    remove_empty_folders(fullpath)
+
+    # if folder empty, delete it
+    files = os.listdir(path)
+    if len(files) == 0 and remove_root:
+        if verbose:
+            eprint("removing empty folder:", path)
+        os.rmdir(path)
 
 
 @click.command()
@@ -563,7 +685,6 @@ def path_is_file(path: Path):
                 nargs=1,
                 required=True,)
 @click.argument("slice_syntax", type=validate_slice, nargs=1)
-#@click.option('--add', is_flag=True)
 @click.option('--verbose', is_flag=True)
 @click.option('--debug', is_flag=True)
 @click.option('--simulate', is_flag=True)
@@ -592,53 +713,11 @@ def cli(ctx,
 
     ctx.ensure_object(dict)
     null = not printn
-    end = nl_iff_tty(printn=printn, ipython=ipython)
     null, end, verbose, debug = nevd(ctx=ctx,
                                      printn=printn,
                                      ipython=False,
                                      verbose=verbose,
                                      debug=debug,)
-
-    #progress = False
-    #if (verbose or debug):
-    #    progress = False
-
-    #if verbose:
-    #    ctx.obj['verbose'] = verbose
-    #verbose = ctx.obj['verbose']
-    #if debug:
-    #    ctx.obj['debug'] = debug
-    #debug = ctx.obj['debug']
-
-    #ctx.obj['end'] = end
-    #ctx.obj['null'] = null
-    #ctx.obj['progress'] = progress
-    ctx.obj['count'] = count
-    ctx.obj['skip'] = skip
-    ctx.obj['head'] = head
-    ctx.obj['tail'] = tail
-
-    #global APP_NAME
-    #config, config_mtime = click_read_config(click_instance=click,
-    #                                         app_name=APP_NAME,
-    #                                         verbose=verbose,
-    #                                         debug=debug,)
-    #if verbose:
-    #    ic(config, config_mtime)
-
-    #if add:
-    #    section = "test_section"
-    #    key = "test_key"
-    #    value = "test_value"
-    #    config, config_mtime = click_write_config_entry(click_instance=click,
-    #                                                    app_name=APP_NAME,
-    #                                                    section=section,
-    #                                                    key=key,
-    #                                                    value=value,
-    #                                                    verbose=verbose,
-    #                                                    debug=debug,)
-    #    if verbose:
-    #        ic(config)
 
     iterator = paths
 
@@ -654,56 +733,73 @@ def cli(ctx,
 
         if verbose:  # or simulate:
             ic(index, path)
-        #if count:
-        #    if count > (index + 1):
-        #        ic(count)
-        #        sys.exit(0)
 
-        #if simulate:
-        #    continue
 
-        with open(path, 'rb') as fh:
-            path_bytes_data = fh.read()
 
-        if not count:
-            print(path, end=end)
 
-    if count:
-        print(index + 1, end=end)
 
-#        if ipython:
-#            import IPython; IPython.embed()
 
-#@cli.command()
-#@click.argument("urls", type=str, nargs=-1)
-#@click.option('--verbose', is_flag=True)
-#@click.option('--debug', is_flag=True)
-#@click.pass_context
-#def some_command(ctx,
-#                 urls,
-#                 verbose: bool,
-#                 debug: bool,
-#                 ):
-#    if verbose:
-#        ctx.obj['verbose'] = verbose
-#    verbose = ctx.obj['verbose']
-#    if debug:
-#        ctx.obj['debug'] = debug
-#    debug = ctx.obj['debug']
+
+def path_is_dir(path):
+    if os.path.isdir(path):  # could still be a symlink
+        if os.path.islink(path):
+            return False
+        return True
+    return False
+
+
+def target_generator(target_list, min_free_space, verbose=True):
+    if verbose:
+        ic(min_free_space)
+    for target in target_list:
+        if verbose:
+            ic(target)
+        if path_exists(target):
+            assert path_is_dir(target)
+            free_space = disk_usage(target).free
+            ic(free_space)
+            if disk_usage(target).free >= min_free_space:
+                yield target
+            else:
+                eprint("skipped:", target, "<", min_free_space)
+    raise FileNotFoundError
+
+
 #
-#    iterator = urls
-#    for index, url in enumerate_input(iterator=iterator,
-#                                      null=ctx.obj['null'],
-#                                      progress=ctx.obj['progress'],
-#                                      skip=ctx.obj['skip'],
-#                                      head=ctx.obj['head'],
-#                                      tail=ctx.obj['tail'],
-#                                      debug=ctx.obj['debug'],
-#                                      verbose=ctx.obj['verbose'],):
 #
-#        if ctx.obj['verbose']:
-#            ic(index, url)
+#def count_entries(folder):  # fast, returns all types of objects in a folder
+#    return len(os.listdir(folder))
+#
+#
 
 
+#def count_files(folder):  # calls lstat on every entry to see if its a file
+#    total = 0
+#    for root, dirs, files in os.walk(folder):
+#        total += len(files)
+#    return total
+#
+#
+#def list_files(folder):
+#    all_files = []
+#    for root, dirs, files in os.walk(folder):
+#        for ifile in files:
+#            relative_file_path = root + b'/' + ifile
+#            all_files.append(relative_file_path)
+#    return set(all_files)
+
+
+#def path_is_dir(path):
+#    if os.path.isdir(path): #could still be a symlink
+#        if os.path.islink(path):
+#            return False
+#        return True
+#
+#
+#def path_is_dir_or_symlink_to_dir(path):
+#    # unlike os.path.exists(False), os.path.isdir(False) returns False
+#    if os.path.isdir(path): # returns False if it's a symlink to a file
+#        return True
+#    return False
 
 
