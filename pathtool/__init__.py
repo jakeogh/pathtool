@@ -1,3 +1,4 @@
+from .pathtool import check_or_create_dir
 from .pathtool import empty_file
 from .pathtool import file_exists_nonzero
 from .pathtool import get_file_size
