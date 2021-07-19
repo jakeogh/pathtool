@@ -18,6 +18,7 @@ from .pathtool import path_is_dir
 from .pathtool import path_is_file
 from .pathtool import points_to_data
 from .pathtool import read_file_bytes
+from .pathtool import really_is_dir
 from .pathtool import remove_empty_folders
 from .pathtool import symlink_destination
 from .pathtool import symlink_or_exit
