@@ -53,23 +53,13 @@ from enumerate_input import enumerate_input
 from psutil import disk_usage
 
 signal(SIGPIPE,SIG_DFL)
+from asserttool import eprint
+from asserttool import ic
 
 #from with_chdir import chdir
 
 #from pathtool import path_is_block_special
 #from getdents import files
-
-
-def eprint(*args, **kwargs):
-    if 'file' in kwargs.keys():
-        kwargs.pop('file')
-    print(*args, file=sys.stderr, **kwargs)
-
-
-try:
-    from icecream import ic  # https://github.com/gruns/icecream
-except ImportError:
-    ic = eprint
 
 
 def cli_path(path: str, verbose: bool, debug: bool,):
@@ -932,6 +922,14 @@ def remove_empty_folders(path, remove_root=True, verbose=False):
         if verbose:
             eprint("removing empty folder:", path)
         os.rmdir(path)
+
+
+def really_is_dir(path: Path):
+    if path.is_symlink():
+        return False
+    if path.is_dir(): # is_dir() answers False for broken symlinks, and crashes with an OSError on self-symlinks
+        return True
+    return False
 
 
 @click.command()
