@@ -53,13 +53,11 @@ from enumerate_input import enumerate_input
 from psutil import disk_usage
 
 signal(SIGPIPE,SIG_DFL)
+from advisory_lock import AdvisoryLock
 from asserttool import eprint
 from asserttool import ic
 
 #from with_chdir import chdir
-
-#from pathtool import path_is_block_special
-#from getdents import files
 
 
 def cli_path(path: str, verbose: bool, debug: bool,):
@@ -362,6 +360,7 @@ def get_symlink_target_final(path): #broken for bytes
 #        print("Unable to symlink link_name: %s to target: %s Exiting." % (link_name, target))
 #        os._exit(1)
 
+
 def is_broken_symlink(path):
     if os.path.islink(path):  # path is a symlink
         return not os.path.exists(path)  # returns False for broken symlinks
@@ -506,7 +505,8 @@ def write_line_to_file(*,
                        verbose: bool,
                        debug: bool,
                        unique: bool = False,
-                       make_new: bool = True,
+                       make_new_if_necessary: bool = True,
+                       unlink_first: bool = False,
                        ) -> bool:
     '''
     Write line to path
@@ -519,8 +519,9 @@ def write_line_to_file(*,
     assert line.count(b'\n') == 1
     assert line.endswith(b'\n')
 
-    try:
-        with open(path, 'rb+') as fh:
+    if unlink_first:
+        os.unlink(path)
+        with open(path, 'xb') as fh:
             if not unique:
                 fh.write(line)
                 return True
@@ -529,14 +530,25 @@ def write_line_to_file(*,
                 fh.write(line)
                 return True
             return False
+    else:
+        try:
+            with open(path, 'rb+') as fh:
+                if not unique:
+                    fh.write(line)
+                    return True
 
-    except FileNotFoundError as e:
-        if make_new:
-            with open(path, 'xb') as fh:
-                fh.write(line)
-                return True
-        else:
-            raise e
+                if line not in fh:
+                    fh.write(line)
+                    return True
+                return False
+
+        except FileNotFoundError as e:
+            if make_new_if_necessary:
+                with open(path, 'xb') as fh:
+                    fh.write(line)
+                    return True
+            else:
+                raise e
 
 
 def line_exists_in_file(*,
@@ -980,11 +992,6 @@ def cli(ctx,
     iterator = paths
 
     for index, path in enumerate_input(iterator=iterator,
-                                       null=null,
-                                       progress=False,
-                                       skip=skip,
-                                       head=head,
-                                       tail=tail,
                                        debug=debug,
                                        verbose=verbose,):
         path = Path(path).expanduser()
