@@ -520,6 +520,7 @@ def write_line_to_file(*,
     assert line.endswith(b'\n')
 
     if unlink_first:
+        assert not unique
         os.unlink(path)
         with open(path, 'xb') as fh:
             if not unique:
