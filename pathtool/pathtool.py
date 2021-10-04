@@ -521,7 +521,10 @@ def write_line_to_file(*,
 
     if unlink_first:
         assert not unique
-        os.unlink(path)
+        try:
+            os.unlink(path)
+        except FileNotFoundError:
+            pass  # race condition
         with open(path, 'xb') as fh:
             if not unique:
                 fh.write(line)
