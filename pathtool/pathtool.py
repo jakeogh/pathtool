@@ -166,7 +166,7 @@ def gurantee_symlink(*,
         os.symlink(target, link_name)
     except FileExistsError as e:
         ic(e)
-        assert Path(link_name).resolve().as_posix == Path(target).as_posix()
+        assert Path(link_name).resolve().as_posix() == Path(target).as_posix()
 
 
 def calculate_relative_symlink_dest(*,
