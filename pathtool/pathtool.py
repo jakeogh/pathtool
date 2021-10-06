@@ -60,7 +60,10 @@ from asserttool import ic
 #from with_chdir import chdir
 
 
-def cli_path(path: str, verbose: bool, debug: bool,):
+def cli_path(path: str,
+             verbose: bool,
+             debug: bool,
+             ):
     # problem, Path('~').expanduser() is ambigious
     # when there is a file named ~ in CWD
     # the obvious solution is to make the user specify
@@ -594,15 +597,6 @@ def file_exists_nonzero(infile):
         if not empty_file(infile):
             return True
     return False
-
-
-def get_block_device_size(device):
-    assert Path(device).is_block_device()
-    fd = os.open(device, os.O_RDONLY)
-    try:
-        return os.lseek(fd, 0, os.SEEK_END)
-    finally:
-        os.close(fd)
 
 
 def get_file_size(filename):
