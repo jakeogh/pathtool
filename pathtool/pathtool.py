@@ -201,6 +201,8 @@ def gurantee_symlink(*,
                      debug:bool,
                      ):
     # todo advisorylock
+    if relative:
+        raise NotImplementedError
     try:
         os.symlink(target, link_name)
     except FileExistsError as e:
@@ -208,7 +210,13 @@ def gurantee_symlink(*,
         assert Path(link_name).resolve().as_posix == Path(target).as_posix()
 
 
-def calculate_relative_symlink_dest(target, link_name):
+def calculate_relative_symlink_dest(*,
+                                    target: Path,
+                                    link_name: Path,
+                                    verbose: bool,
+                                    debug: bool,
+                                    ):
+
     # todo eval https://docs.python.org/3/library/os.path.html#os.path.commonpath
     if isinstance(target, str):
         target = bytes(target, encoding='UTF8')
@@ -227,7 +235,6 @@ def calculate_relative_symlink_dest(target, link_name):
 
     assert not target.startswith(b'../')
     # got relative target, that's hard to deal with pass in a fully qualified path
-
     # if target is also an existing symlink, detect that and dont call realpath()
     # call something that gets the realpath but does not follow any links
 
@@ -296,8 +303,14 @@ def calculate_relative_symlink_dest(target, link_name):
     return relative_target
 
 
-def create_relative_symlink(target, link_name):
-    relative_target = calculate_relative_symlink_dest(target, link_name)
+def create_relative_symlink(*,
+                            target: Path,
+                            link_name: Path,
+                            verbose: bool,
+                            debug: bool,
+                            ):
+
+    relative_target = calculate_relative_symlink_dest(target=target, link_name=link_name, verbose=verbose, debug=debug)
     link_name_realpath = os.path.realpath(link_name)
     os.symlink(relative_target, link_name_realpath)
 
