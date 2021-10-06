@@ -35,7 +35,10 @@ from signal import SIGPIPE
 from signal import signal
 
 import click
+from advisory_lock import AdvisoryLock
 #import magic  # sys-apps/file  #PIA
+from asserttool import eprint
+from asserttool import ic
 from asserttool import nevd
 from asserttool import verify
 from hashtool import sha3_256_hash_file
@@ -52,12 +55,7 @@ from typing import Sequence
 from enumerate_input import enumerate_input
 from psutil import disk_usage
 
-signal(SIGPIPE,SIG_DFL)
-from advisory_lock import AdvisoryLock
-from asserttool import eprint
-from asserttool import ic
-
-#from with_chdir import chdir
+signal(SIGPIPE, SIG_DFL)
 
 
 def cli_path(path: str,
@@ -112,45 +110,6 @@ def target_generator(target_list, min_free_space, verbose=True):
             else:
                 eprint("skipped:", target, "<", min_free_space)
     raise FileNotFoundError
-
-
-#
-#
-#def count_entries(folder):  # fast, returns all types of objects in a folder
-#    return len(os.listdir(folder))
-#
-#
-
-
-#def count_files(folder):  # calls lstat on every entry to see if its a file
-#    total = 0
-#    for root, dirs, files in os.walk(folder):
-#        total += len(files)
-#    return total
-#
-#
-#def list_files(folder):
-#    all_files = []
-#    for root, dirs, files in os.walk(folder):
-#        for ifile in files:
-#            relative_file_path = root + b'/' + ifile
-#            all_files.append(relative_file_path)
-#    return set(all_files)
-
-
-#def path_is_dir(path):
-#    if os.path.isdir(path): #could still be a symlink
-#        if os.path.islink(path):
-#            return False
-#        return True
-#
-#
-#def path_is_dir_or_symlink_to_dir(path):
-#    # unlike os.path.exists(False), os.path.isdir(False) returns False
-#    if os.path.isdir(path): # returns False if it's a symlink to a file
-#        return True
-#    return False
-
 
 
 def is_symlink(infile):
