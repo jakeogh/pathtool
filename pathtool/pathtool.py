@@ -193,6 +193,21 @@ def get_symlink_abs_target(link): # assumes link is unbroken
 #    return False
 
 
+def insure_symlink(*,
+                   target: Path,
+                   link_name: Path,
+                   relative: bool,
+                   verbose: bool,
+                   debug:bool,
+                   ):
+    # todo advisorylock
+    try:
+        os.symlink(target, link_name)
+    except FileExistsError as e:
+        ic(e)
+        assert Path(link_name).resolve().as_posix == Path(target).as_posix()
+
+
 def calculate_relative_symlink_dest(target, link_name):
     # todo eval https://docs.python.org/3/library/os.path.html#os.path.commonpath
     if isinstance(target, str):
