@@ -193,13 +193,13 @@ def get_symlink_abs_target(link): # assumes link is unbroken
 #    return False
 
 
-def insure_symlink(*,
-                   target: Path,
-                   link_name: Path,
-                   relative: bool,
-                   verbose: bool,
-                   debug:bool,
-                   ):
+def gurantee_symlink(*,
+                     target: Path,
+                     link_name: Path,
+                     relative: bool,
+                     verbose: bool,
+                     debug:bool,
+                     ):
     # todo advisorylock
     try:
         os.symlink(target, link_name)

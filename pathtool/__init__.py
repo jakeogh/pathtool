@@ -8,7 +8,7 @@ from .pathtool import file_exists_nonzero
 from .pathtool import get_file_size
 from .pathtool import get_path_with_most_free_space
 from .pathtool import get_symlink_target_final
-from .pathtool import insure_symlink
+from .pathtool import gurantee_symlink
 from .pathtool import is_broken_symlink
 from .pathtool import is_regular_file
 from .pathtool import is_unbroken_symlink
