@@ -35,7 +35,6 @@ from signal import SIGPIPE
 from signal import signal
 
 import click
-from advisory_lock import AdvisoryLock
 #import magic  # sys-apps/file  #PIA
 from asserttool import eprint
 from asserttool import ic
@@ -79,14 +78,6 @@ def validate_slice(slice_syntax: str):
     return slice_syntax
 
 
-#def path_is_dir(path):
-#    if os.path.isdir(path):  # could still be a symlink
-#        if os.path.islink(path):
-#            return False
-#        return True
-#    return False
-
-
 def path_is_dir(path):
     if os.path.isdir(path):  # could still be a symlink
         if os.path.islink(path):
@@ -124,18 +115,6 @@ def is_symlink_to_dir(link):
     return False
 
 
-#def is_broken_symlink(path):
-#    if os.path.islink(path): # path is a symlink
-#        return not os.path.exists(path) # returns False for broken symlinks
-#    return False # path isnt a symlink
-#
-#
-#def is_unbroken_symlink(path):
-#    if os.path.islink(path): # path is a symlink
-#        return os.path.exists(path) # returns False for broken symlinks
-#    return False # path isnt a symlink
-
-
 def get_symlink_abs_target(link): # assumes link is unbroken
     target = os.readlink(link)
     target_joined = os.path.join(os.path.dirname(link), target)
@@ -143,21 +122,12 @@ def get_symlink_abs_target(link): # assumes link is unbroken
     return target_file
 
 
-# TODO get is_unbroken_symlink "from symlinktree import is_unbroken_symlink"
-#def is_unbroken_symlink_to_target(target, link):    #bug, should not assume unicode paths
-#    if is_unbroken_symlink(link):
-#        link_target = get_symlink_abs_target(link)
-#        if link_target == target:
-#            return True
-#    return False
-
-
 def gurantee_symlink(*,
                      target: Path,
                      link_name: Path,
                      relative: bool,
                      verbose: bool,
-                     debug:bool,
+                     debug: bool,
                      ):
     # todo advisorylock
     if relative:
@@ -333,22 +303,6 @@ def get_symlink_target_final(path): #broken for bytes
         target_file = readlinkf(path).decode('UTF-8')
     #print("target_file:", target_file)
     return target_file
-
-
-#def symlink_or_exit(target, link_name, confirm=False, verbose=False):
-#    if verbose:
-#        ic(target)
-#        ic(link_name)
-#
-#    if confirm:
-#        input("press enter to os.symlink({}, {})".format(target, link_name))
-#
-#    try:
-#        os.symlink(target, link_name)
-#    except Exception as e:
-#        print("Got Exception: %s", e)
-#        print("Unable to symlink link_name: %s to target: %s Exiting." % (link_name, target))
-#        os._exit(1)
 
 
 def is_broken_symlink(path):
@@ -593,12 +547,13 @@ def get_file_size(filename):
     return size
 
 
-def points_to_data(fpath,
+def points_to_data(path: Path,
+                   *,
                    empty_ok: bool = False,
                    ):
-    assert isinstance(fpath, (str, bytes, Path))
+    assert isinstance(path, Path)
     try:
-        size = os.path.getsize(fpath)  # annoyingly, os.stat(False) == os.stat(0) == os.stat('/dev/stdout')
+        size = os.path.getsize(path)  # annoyingly, os.stat(False) == os.stat(0) == os.stat('/dev/stdout')
     except FileNotFoundError:
         return False
     if empty_ok:
@@ -608,12 +563,13 @@ def points_to_data(fpath,
     return False
 
 
-def empty_file(fpath):
-    if not path_exists(fpath):
+def empty_file(path: Path):
+    assert isinstance(path, Path)
+    if not path_exists(path):
         #return True #hm
         raise FileNotFoundError
-    if os.path.isfile(fpath):
-        if os.path.getsize(fpath) == 0:
+    if os.path.isfile(path):
+        if os.path.getsize(path) == 0:
             return True
     return False
 
@@ -721,18 +677,20 @@ def get_free_space_at_path(*,
     free_bytes = os.statvfs(path).f_ffree
     if verbose:
         ic(path, free_bytes)
+    assert isinstance(free_bytes, int)
     return free_bytes
 
 
 def get_path_with_most_free_space(*,
-                                  pathlist: [Path],
+                                  pathlist: list[Path],
                                   verbose: bool,
                                   debug: bool,
                                   ):
     ic(pathlist)
-    largest = ()
+    assert isinstance(pathlist, (list, tuple))
+    largest: Optional[tuple[int, Path]] = None
     for path in pathlist:
-        free_bytes = get_free_space_at_path(path=path, verbose=verbose, debug=debug,)
+        free_bytes: int = get_free_space_at_path(path=path, verbose=verbose, debug=debug,)
         ic(path, free_bytes)
         if not largest:
             largest = (free_bytes, path)
@@ -742,7 +700,9 @@ def get_path_with_most_free_space(*,
     if verbose:
         ic(largest)
     ic(largest)
-    return Path(largest[1])
+    if largest:
+        return Path(largest[1])
+    raise ValueError
 
 
 def longest_prefix(iter0, iter1):
@@ -757,8 +717,8 @@ def longest_prefix(iter0, iter1):
     return _longest_prefix
 
 
-def paths_are_identical(path1,
-                        path2,
+def paths_are_identical(path1: Path,
+                        path2: Path,
                         *,
                         time: bool = False,
                         perms: bool = False,
@@ -774,9 +734,6 @@ def paths_are_identical(path1,
 
     path1_type = stat.S_IFMT(path1_lstat.st_mode)
     path2_type = stat.S_IFMT(path2_lstat.st_mode)
-    #if verbose:
-    #    ic(path1_type)
-    #    ic(path2_type)
 
     if path1_type != path2_type:
         ic(path1, path1_type)
@@ -810,32 +767,11 @@ def paths_are_identical(path1,
     return True
 
 
-#def common_prefix_path(path0, path1):
-#    return os.path.join(*longest_prefix(components(path0), components(path1)))
-
-# For Unix:
-#assert common_prefix_path('/', '/usr') == '/'
-#assert common_prefix_path('/usr/var1/log/', '/usr/var2/log/') == '/usr'
-#assert common_prefix_path('/usr/var/log1/', '/usr/var/log2/') == '/usr/var'
-#assert common_prefix_path('/usr/var/log', '/usr/var/log2') == '/usr/var'
-#assert common_prefix_path('/usr/var/log', '/usr/var/log') == '/usr/var/log'
-# Only for Windows:
-# assert common_prefix_path(r'C:\Programs\Me', r'C:\Programs') == r'C:\Programs'
-
-
 def path_is_dir_or_symlink_to_dir(path):
     # unlike os.path.exists(False), os.path.isdir(False) returns False
     if os.path.isdir(path): # returns False if it's a symlink to a file
         return True
     return False
-
-
-#def path_is_dir(path):
-#    if os.path.isdir(path): #could still be a symlink
-#        if os.path.islink(path):
-#            return False
-#        return True
-#    return False
 
 
 def path_exists(path):
@@ -931,45 +867,19 @@ def really_is_dir(path: Path):
 
 @click.command()
 @click.argument("paths", type=str, nargs=-1)
-@click.argument("sysskel",
-                type=click.Path(exists=False,
-                                dir_okay=True,
-                                file_okay=False,
-                                path_type=str,
-                                allow_dash=False,),
-                nargs=1,
-                required=True,)
-@click.argument("slice_syntax", type=validate_slice, nargs=1)
 @click.option('--verbose', is_flag=True)
 @click.option('--debug', is_flag=True)
-@click.option('--simulate', is_flag=True)
-@click.option('--ipython', is_flag=True)
-@click.option('--count', is_flag=True)
-@click.option('--skip', type=int, default=False)
-@click.option('--head', type=int, default=False)
-@click.option('--tail', type=int, default=False)
-@click.option("--printn", is_flag=True)
-#@click.option("--progress", is_flag=True)
 @click.pass_context
 def cli(ctx,
-        paths,
+        paths: tuple[str],
         sysskel: str,
-        slice_syntax: str,
         verbose: bool,
         debug: bool,
-        simulate: bool,
-        ipython: bool,
-        count: bool,
-        skip: int,
-        head: int,
-        tail: int,
-        printn: bool,
         ):
 
     ctx.ensure_object(dict)
-    null = not printn
     null, end, verbose, debug = nevd(ctx=ctx,
-                                     printn=printn,
+                                     printn=False,
                                      ipython=False,
                                      verbose=verbose,
                                      debug=debug,)
