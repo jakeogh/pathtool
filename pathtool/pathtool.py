@@ -359,7 +359,7 @@ def mkdir_or_exit(folder,
 
 def comment_out_line_in_file(*,
                              path,
-                             line_to_match: str,
+                             line: str,
                              verbose: bool,
                              debug: bool,
                              startswith: bool = False,
@@ -374,6 +374,8 @@ def comment_out_line_in_file(*,
     if line_to_match is found and all instances already commented return True
     if line_to_match is not found return False
     '''
+    line_to_match = line
+    del line
     with open(path, 'r') as rfh:  # bug should hold the fh
         lines = rfh.read().splitlines()
     newlines = []
@@ -403,8 +405,6 @@ def uncomment_line_in_file(*,
                            verbose: bool,
                            debug: bool,
                            ):
-    line_to_match = line
-    del line
     '''
     remove # from the beginning of all instances of line_to_match
     iff there is already a # preceding line_to_match and
@@ -415,6 +415,8 @@ def uncomment_line_in_file(*,
     if line_to_match is found and all instances already uncommented return True
     if line_to_match is not found return False
     '''
+    line_to_match = line
+    del line
     with open(path, 'r') as rfh:  # bug should hold the fh
         lines = rfh.read().splitlines()
     newlines = []
