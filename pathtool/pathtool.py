@@ -301,7 +301,6 @@ def get_symlink_target_final(path): #broken for bytes
         target_file = readlinkf(target_joined).decode('UTF-8')
     else:
         target_file = readlinkf(path).decode('UTF-8')
-    #print("target_file:", target_file)
     return target_file
 
 
