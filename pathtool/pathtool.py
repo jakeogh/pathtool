@@ -339,7 +339,7 @@ def symlink_or_exit(target,
 def mkdir_or_exit(folder,
                   confirm: bool,
                   verbose: bool,
-                  user: str = None,
+                  user: Optional[str] = None,
                   ):
     if verbose:
         ic(folder)
@@ -379,7 +379,6 @@ def comment_out_line_in_file(*,
     with open(path, 'r') as rfh:  # bug should hold the fh
         lines = rfh.read().splitlines()
     newlines = []
-    #commented = False
     for line in lines:
         if line_to_match in line:
             line_stripped = line.strip()
