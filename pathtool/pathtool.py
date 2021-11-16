@@ -400,10 +400,12 @@ def comment_out_line_in_file(*,
 
 def uncomment_line_in_file(*,
                            path,
-                           line_to_match: str,
+                           line: str,
                            verbose: bool,
                            debug: bool,
                            ):
+    line_to_match = line
+    del line
     '''
     remove # from the beginning of all instances of line_to_match
     iff there is already a # preceding line_to_match and
