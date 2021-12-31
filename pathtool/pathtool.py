@@ -39,7 +39,6 @@ import click
 from asserttool import eprint
 from asserttool import ic
 from asserttool import nevd
-from asserttool import verify
 from hashtool import sha3_256_hash_file
 from retry_on_exception import retry_on_exception
 
@@ -635,9 +634,9 @@ def is_regular_file(path):
 #    return line_id
 
 
-def combine_files(source, destination, buffer=65535):
-    verify(is_regular_file(source))
-    verify(is_regular_file(destination))
+def combine_files(source: Path, destination: Path, buffer=65535):
+    assert is_regular_file(source)
+    assert is_regular_file(destination)
     with open(source, "rb") as sfh:
         fcntl.flock(sfh, fcntl.LOCK_SH)
         with open(destination, "ab") as dfh:
@@ -726,8 +725,9 @@ def paths_are_identical(path1: Path,
                         perms: bool = False,
                         verbose: bool = False,
                         ):
-    verify(isinstance(path1, Path))
-    verify(isinstance(path2, Path))
+
+    assert isinstance(path1, Path)
+    assert isinstance(path2, Path)
     if time or perms:
         raise NotImplementedError
 
