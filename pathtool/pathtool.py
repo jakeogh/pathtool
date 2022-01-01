@@ -38,17 +38,14 @@ import click
 #import magic  # sys-apps/file  #PIA
 from asserttool import eprint
 from asserttool import ic
-from asserttool import nevd
+from asserttool import tv
+from clicktool import add_options
+from clicktool import click_global_options
 from hashtool import sha3_256_hash_file
 from retry_on_exception import retry_on_exception
 
 signal(SIGPIPE, SIG_DFL)
-from typing import ByteString
-from typing import Generator
-from typing import Iterable
-from typing import List
 from typing import Optional
-from typing import Sequence
 
 from enumerate_input import enumerate_input
 from psutil import disk_usage
@@ -58,7 +55,6 @@ signal(SIGPIPE, SIG_DFL)
 
 def cli_path(path: str,
              verbose: bool,
-             debug: bool,
              ):
     # problem, Path('~').expanduser() is ambigious
     # when there is a file named ~ in CWD
@@ -126,7 +122,6 @@ def gurantee_symlink(*,
                      link_name: Path,
                      relative: bool,
                      verbose: bool,
-                     debug: bool,
                      ):
     # todo advisorylock
     if relative:
@@ -142,7 +137,6 @@ def calculate_relative_symlink_dest(*,
                                     target: Path,
                                     link_name: Path,
                                     verbose: bool,
-                                    debug: bool,
                                     ):
 
     # todo eval https://docs.python.org/3/library/os.path.html#os.path.commonpath
@@ -235,10 +229,12 @@ def create_relative_symlink(*,
                             target: Path,
                             link_name: Path,
                             verbose: bool,
-                            debug: bool,
                             ):
 
-    relative_target = calculate_relative_symlink_dest(target=target, link_name=link_name, verbose=verbose, debug=debug)
+    relative_target = calculate_relative_symlink_dest(target=target,
+                                                      link_name=link_name,
+                                                      verbose=verbose,
+                                                      )
     link_name_realpath = os.path.realpath(link_name)
     os.symlink(relative_target, link_name_realpath)
 
@@ -360,7 +356,6 @@ def comment_out_line_in_file(*,
                              path,
                              line: str,
                              verbose: bool,
-                             debug: bool,
                              startswith: bool = False,
                              ):
     '''
@@ -401,7 +396,6 @@ def uncomment_line_in_file(*,
                            path,
                            line: str,
                            verbose: bool,
-                           debug: bool,
                            ):
     '''
     remove # from the beginning of all instances of line_to_match
@@ -448,7 +442,6 @@ def write_line_to_file(*,
                        line,
                        path: Path,
                        verbose: bool,
-                       debug: bool,
                        unique: bool = False,
                        make_new_if_necessary: bool = True,
                        unlink_first: bool = False,
@@ -504,7 +497,6 @@ def line_exists_in_file(*,
                         line,
                         file_to_check,
                         verbose: bool,
-                        debug: bool,
                         ):
     if isinstance(line, str):
         line = line.encode('UTF8')
@@ -672,7 +664,6 @@ def temp_fifo(verbose: bool = False,
 def get_free_space_at_path(*,
                            path: Path,
                            verbose: bool,
-                           debug: bool,
                            ):
     assert isinstance(path, Path)
     free_bytes = os.statvfs(path).f_ffree
@@ -685,13 +676,12 @@ def get_free_space_at_path(*,
 def get_path_with_most_free_space(*,
                                   pathlist: list[Path],
                                   verbose: bool,
-                                  debug: bool,
                                   ):
     ic(pathlist)
     assert isinstance(pathlist, (list, tuple))
     largest: Optional[tuple[int, Path]] = None
     for path in pathlist:
-        free_bytes: int = get_free_space_at_path(path=path, verbose=verbose, debug=debug,)
+        free_bytes: int = get_free_space_at_path(path=path, verbose=verbose,)
         ic(path, free_bytes)
         if not largest:
             largest = (free_bytes, path)
@@ -869,27 +859,23 @@ def really_is_dir(path: Path):
 
 @click.command()
 @click.argument("paths", type=str, nargs=-1)
-@click.option('--verbose', is_flag=True)
-@click.option('--debug', is_flag=True)
+@add_options(click_global_options)
 @click.pass_context
 def cli(ctx,
         paths: tuple[str],
         sysskel: str,
-        verbose: bool,
-        debug: bool,
+        verbose: int,
+        verbose_inf: bool,
         ):
 
-    ctx.ensure_object(dict)
-    null, end, verbose, debug = nevd(ctx=ctx,
-                                     printn=False,
-                                     ipython=False,
-                                     verbose=verbose,
-                                     debug=debug,)
+    tty, verbose = tv(ctx=ctx,
+                      verbose=verbose,
+                      verbose_inf=verbose_inf,
+                      )
 
     iterator = paths
 
     for index, path in enumerate_input(iterator=iterator,
-                                       debug=debug,
                                        verbose=verbose,):
         path = Path(path).expanduser()
 
