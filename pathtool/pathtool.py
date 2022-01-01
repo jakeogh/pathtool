@@ -39,7 +39,7 @@ import click
 from asserttool import eprint
 from asserttool import ic
 from asserttool import tv
-from clicktool import add_options
+from clicktool import click_add_options
 from clicktool import click_global_options
 from hashtool import sha3_256_hash_file
 from retry_on_exception import retry_on_exception
@@ -859,7 +859,7 @@ def really_is_dir(path: Path):
 
 @click.command()
 @click.argument("paths", type=str, nargs=-1)
-@add_options(click_global_options)
+@click_add_options(click_global_options)
 @click.pass_context
 def cli(ctx,
         paths: tuple[str],
