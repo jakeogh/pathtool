@@ -33,6 +33,7 @@ from shutil import copyfileobj
 from signal import SIG_DFL
 from signal import SIGPIPE
 from signal import signal
+from typing import Optional
 
 import click
 #import magic  # sys-apps/file  #PIA
@@ -42,19 +43,15 @@ from asserttool import tv
 from clicktool import click_add_options
 from clicktool import click_global_options
 from hashtool import sha3_256_hash_file
-from retry_on_exception import retry_on_exception
-
-signal(SIGPIPE, SIG_DFL)
-from typing import Optional
-
-from enumerate_input import enumerate_input
 from psutil import disk_usage
+from retry_on_exception import retry_on_exception
+from unmp import unmp
 
 signal(SIGPIPE, SIG_DFL)
 
 
 def cli_path(path: str,
-             verbose: bool,
+             verbose: int,
              ):
     # problem, Path('~').expanduser() is ambigious
     # when there is a file named ~ in CWD
@@ -121,7 +118,7 @@ def gurantee_symlink(*,
                      target: Path,
                      link_name: Path,
                      relative: bool,
-                     verbose: bool,
+                     verbose: int,
                      ):
     # todo advisorylock
     if relative:
@@ -136,7 +133,7 @@ def gurantee_symlink(*,
 def calculate_relative_symlink_dest(*,
                                     target: Path,
                                     link_name: Path,
-                                    verbose: bool,
+                                    verbose: int,
                                     ):
 
     # todo eval https://docs.python.org/3/library/os.path.html#os.path.commonpath
@@ -228,7 +225,7 @@ def calculate_relative_symlink_dest(*,
 def create_relative_symlink(*,
                             target: Path,
                             link_name: Path,
-                            verbose: bool,
+                            verbose: int,
                             ):
 
     relative_target = calculate_relative_symlink_dest(target=target,
@@ -314,7 +311,7 @@ def is_unbroken_symlink(path):
 def symlink_or_exit(target,
                     link_name,
                     confirm: bool = False,
-                    verbose: bool = False,
+                    verbose: int = False,
                     ):
     if verbose:
         ic(target)
@@ -333,7 +330,7 @@ def symlink_or_exit(target,
 
 def mkdir_or_exit(folder,
                   confirm: bool,
-                  verbose: bool,
+                  verbose: int,
                   user: Optional[str] = None,
                   ):
     if verbose:
@@ -355,7 +352,7 @@ def mkdir_or_exit(folder,
 def comment_out_line_in_file(*,
                              path,
                              line: str,
-                             verbose: bool,
+                             verbose: int,
                              startswith: bool = False,
                              ):
     '''
@@ -395,7 +392,7 @@ def comment_out_line_in_file(*,
 def uncomment_line_in_file(*,
                            path,
                            line: str,
-                           verbose: bool,
+                           verbose: int,
                            ):
     '''
     remove # from the beginning of all instances of line_to_match
@@ -441,7 +438,7 @@ def uncomment_line_in_file(*,
 def write_line_to_file(*,
                        line,
                        path: Path,
-                       verbose: bool,
+                       verbose: int,
                        unique: bool = False,
                        make_new_if_necessary: bool = True,
                        unlink_first: bool = False,
@@ -496,7 +493,7 @@ def write_line_to_file(*,
 def line_exists_in_file(*,
                         line,
                         file_to_check,
-                        verbose: bool,
+                        verbose: int,
                         ):
     if isinstance(line, str):
         line = line.encode('UTF8')
@@ -646,7 +643,7 @@ def combine_files(source: Path, destination: Path, buffer=65535):
 # https://github.com/twisted/twisted/blob/trunk/twisted/python/filepath.py
 # https://stackoverflow.com/questions/1430446/create-a-temporary-fifo-named-pipe-in-python
 @contextmanager
-def temp_fifo(verbose: bool = False,
+def temp_fifo(verbose: int = False,
               ):
     """Context Manager for creating named pipes with temporary names."""
     tmpdir = tempfile.mkdtemp()
@@ -663,7 +660,7 @@ def temp_fifo(verbose: bool = False,
 
 def get_free_space_at_path(*,
                            path: Path,
-                           verbose: bool,
+                           verbose: int,
                            ):
     assert isinstance(path, Path)
     free_bytes = os.statvfs(path).f_ffree
@@ -675,7 +672,7 @@ def get_free_space_at_path(*,
 
 def get_path_with_most_free_space(*,
                                   pathlist: list[Path],
-                                  verbose: bool,
+                                  verbose: int,
                                   ):
     ic(pathlist)
     assert isinstance(pathlist, (list, tuple))
@@ -713,7 +710,7 @@ def paths_are_identical(path1: Path,
                         *,
                         time: bool = False,
                         perms: bool = False,
-                        verbose: bool = False,
+                        verbose: int = False,
                         ):
 
     assert isinstance(path1, Path)
@@ -873,10 +870,12 @@ def cli(ctx,
                       verbose_inf=verbose_inf,
                       )
 
-    iterator = paths
+    if paths:
+        iterator = paths
+    else:
+        iterator = unmp(valid_types=[bool,], verbose=verbose)
 
-    for index, path in enumerate_input(iterator=iterator,
-                                       verbose=verbose,):
+    for index, path in enumerate(iterator):
         path = Path(path).expanduser()
 
         if verbose:  # or simulate:
