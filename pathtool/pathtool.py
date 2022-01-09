@@ -78,7 +78,10 @@ def path_is_dir(path):
     return False
 
 
-def target_generator(target_list, min_free_space, verbose=True):
+def target_generator(target_list,
+                     min_free_space: int,
+                     verbose: bool = True,
+                     ):
     if verbose:
         ic(min_free_space)
     for target in target_list:
