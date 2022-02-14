@@ -30,24 +30,14 @@ import time
 from contextlib import contextmanager
 from pathlib import Path
 from shutil import copyfileobj
-from signal import SIG_DFL
-from signal import SIGPIPE
-from signal import signal
 from typing import Optional
 
-import click
 #import magic  # sys-apps/file  #PIA
-from asserttool import eprint
 from asserttool import ic
-from asserttool import tv
-from clicktool import click_add_options
-from clicktool import click_global_options
+from epprint import epprint
 from hashtool import sha3_256_hash_file
 from psutil import disk_usage
 from retry_on_exception import retry_on_exception
-from unmp import unmp
-
-signal(SIGPIPE, SIG_DFL)
 
 
 def cli_path(path: str,
@@ -94,7 +84,7 @@ def target_generator(target_list,
             if disk_usage(target).free >= min_free_space:
                 yield target
             else:
-                eprint("skipped:", target, "<", min_free_space)
+                epprint("skipped:", target, "<", min_free_space)
     raise FileNotFoundError
 
 
@@ -317,18 +307,11 @@ def symlink_or_exit(target,
                     verbose: int = False,
                     ):
     if verbose:
-        ic(target)
-        ic(link_name)
+        ic(target, link_name)
 
     if confirm:
         input("press enter to os.symlink({}, {})".format(target, link_name))
-
-    try:
-        os.symlink(target, link_name)
-    except Exception as e:
-        eprint('Got Exception: %s', e)
-        eprint('Unable to symlink link_name: %s to target: %s Exiting.' % (link_name, target))
-        raise e
+    os.symlink(target, link_name)
 
 
 def mkdir_or_exit(folder,
@@ -577,7 +560,7 @@ def make_file_immutable(infile):
     result_command = "/usr/bin/lsattr " + infile
     result = os.popen(result_command).read()
     if result[4] != 'i':
-        eprint('make_file_immutable(%s) failed. Exiting')
+        epprint('make_file_immutable(%s) failed. Exiting')
         raise UnableToSetImmutableError(command)
     return True
 
@@ -586,8 +569,8 @@ def rename_or_exit(src, dest):
     try:
         os.rename(src, dest)
     except Exception as e:
-        eprint("Got Exception: %s", e)
-        eprint("Unable to rename src: %s to dest: %s Exiting.", src, dest)
+        epprint("Got Exception: %s", e)
+        epprint("Unable to rename src: %s to dest: %s Exiting.", src, dest)
         sys.exit(1)
 
 
@@ -595,8 +578,8 @@ def move_file_only_if_new_or_exit(source, dest):
     try:
         shutil.move(source, dest)   #todo: fix race condition beacuse shutil.move overwrites existing dest
     except Exception as e:
-        eprint("Exception: %s", e)
-        eprint("move_file_only_if_new_or_exit(): error. Exiting.")
+        epprint("Exception: %s", e)
+        epprint("move_file_only_if_new_or_exit(): error. Exiting.")
         sys.exit(1)
 
 
@@ -610,7 +593,7 @@ def write_file(infile, data):
         with open(infile, "xb") as fd:
             fd.write(data)
     else:
-        eprint("Unknown type for data: %s. Could not create python file descriptor: %s Exiting.", type(data), infile)
+        epprint("Unknown type for data: %s. Could not create python file descriptor: %s Exiting.", type(data), infile)
         os._exit(1)
 
 
@@ -798,14 +781,14 @@ def check_or_create_dir(folder, confirm=True):
     #assert isinstance(folder, bytes)
     if not os.path.isdir(folder):
         if confirm:
-            eprint("The folder:")
-            eprint(folder)
-            eprint("does not exist. Type yes to create it and continue, otherwise exiting:")
-            eprint("make dir:")
-            eprint(folder, end=None)
+            epprint("The folder:")
+            epprint(folder)
+            epprint("does not exist. Type yes to create it and continue, otherwise exiting:")
+            epprint("make dir:")
+            epprint(folder, end=None)
             make_folder_answer = input(": ")
             if make_folder_answer.lower() != "yes":
-                eprint("Exiting before mkdir.")
+                epprint("Exiting before mkdir.")
                 os._exit(1)
         create_dir(folder)
         return True
@@ -822,8 +805,8 @@ def chdir_or_exit(targetdir):
     try:
         os.chdir(targetdir)
     except Exception as e:
-        eprint("Exception:", e)
-        eprint("Unable to os.chdir(%s). Enxiting.", targetdir)
+        epprint("Exception:", e)
+        epprint("Unable to os.chdir(%s). Enxiting.", targetdir)
         os._exit(1)
     return True
 
@@ -845,7 +828,7 @@ def remove_empty_folders(path, remove_root=True, verbose=False):
     files = os.listdir(path)
     if len(files) == 0 and remove_root:
         if verbose:
-            eprint("removing empty folder:", path)
+            epprint("removing empty folder:", path)
         os.rmdir(path)
 
 
@@ -855,31 +838,3 @@ def really_is_dir(path: Path):
     if path.is_dir(): # is_dir() answers False for broken symlinks, and crashes with an OSError on self-symlinks
         return True
     return False
-
-
-@click.command()
-@click.argument("paths", type=str, nargs=-1)
-@click_add_options(click_global_options)
-@click.pass_context
-def cli(ctx,
-        paths: tuple[str],
-        sysskel: str,
-        verbose: int,
-        verbose_inf: bool,
-        ):
-
-    tty, verbose = tv(ctx=ctx,
-                      verbose=verbose,
-                      verbose_inf=verbose_inf,
-                      )
-
-    if paths:
-        iterator = paths
-    else:
-        iterator = unmp(valid_types=[bool,], verbose=verbose)
-
-    for index, path in enumerate(iterator):
-        path = Path(path).expanduser()
-
-        if verbose:  # or simulate:
-            ic(index, path)
