@@ -31,6 +31,7 @@ from contextlib import contextmanager
 from pathlib import Path
 from shutil import copyfileobj
 from typing import Optional
+from typing import Union
 
 # import magic  # sys-apps/file  #PIA
 from asserttool import ic
@@ -38,7 +39,6 @@ from epprint import epprint
 from hashtool import sha3_256_hash_file
 from psutil import disk_usage
 from retry_on_exception import retry_on_exception
-from typimg import Union
 
 
 def cli_path(
@@ -855,13 +855,6 @@ def check_or_create_dir(folder, confirm: bool = True):
                 os._exit(1)
         os.makedirs(folder)
         return True
-
-
-# def create_dir(folder):
-#    try:
-#        os.makedirs(folder, exist_ok=True)
-#    except FileExistsError:
-#        pass
 
 
 def chdir_or_exit(targetdir):
