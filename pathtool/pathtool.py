@@ -32,17 +32,19 @@ from pathlib import Path
 from shutil import copyfileobj
 from typing import Optional
 
-#import magic  # sys-apps/file  #PIA
+# import magic  # sys-apps/file  #PIA
 from asserttool import ic
 from epprint import epprint
 from hashtool import sha3_256_hash_file
 from psutil import disk_usage
 from retry_on_exception import retry_on_exception
+from typimg import Union
 
 
-def cli_path(path: str,
-             verbose: int,
-             ):
+def cli_path(
+    path: str,
+    verbose: Union[bool, int, float],
+):
     # problem, Path('~').expanduser() is ambigious
     # when there is a file named ~ in CWD
     # the obvious solution is to make the user specify
@@ -55,7 +57,22 @@ def cli_path(path: str,
 def validate_slice(slice_syntax: str):
     assert isinstance(slice_syntax, str)
     for c in slice_syntax:
-        if c not in ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '-', '[', ']', ':']:
+        if c not in [
+            "0",
+            "1",
+            "2",
+            "3",
+            "4",
+            "5",
+            "6",
+            "7",
+            "8",
+            "9",
+            "-",
+            "[",
+            "]",
+            ":",
+        ]:
             raise ValueError(slice_syntax)
     return slice_syntax
 
@@ -68,10 +85,11 @@ def path_is_dir(path):
     return False
 
 
-def target_generator(target_list,
-                     min_free_space: int,
-                     verbose: bool = True,
-                     ):
+def target_generator(
+    target_list,
+    min_free_space: int,
+    verbose: bool = True,
+):
     if verbose:
         ic(min_free_space)
     for target in target_list:
@@ -100,19 +118,20 @@ def is_symlink_to_dir(link):
     return False
 
 
-def get_symlink_abs_target(link): # assumes link is unbroken
+def get_symlink_abs_target(link):  # assumes link is unbroken
     target = os.readlink(link)
     target_joined = os.path.join(os.path.dirname(link), target)
     target_file = os.path.realpath(target_joined)
     return target_file
 
 
-def gurantee_symlink(*,
-                     target: Path,
-                     link_name: Path,
-                     relative: bool,
-                     verbose: int,
-                     ):
+def gurantee_symlink(
+    *,
+    target: Path,
+    link_name: Path,
+    relative: bool,
+    verbose: Union[bool, int, float],
+):
     # todo advisorylock
     if relative:
         raise NotImplementedError
@@ -123,29 +142,30 @@ def gurantee_symlink(*,
         assert Path(link_name).resolve().as_posix() == Path(target).as_posix()
 
 
-def calculate_relative_symlink_dest(*,
-                                    target: Path,
-                                    link_name: Path,
-                                    verbose: int,
-                                    ):
+def calculate_relative_symlink_dest(
+    *,
+    target: Path,
+    link_name: Path,
+    verbose: Union[bool, int, float],
+):
 
     # todo eval https://docs.python.org/3/library/os.path.html#os.path.commonpath
     if isinstance(target, str):
-        target = bytes(target, encoding='UTF8')
+        target = bytes(target, encoding="UTF8")
     if isinstance(target, Path):
         target = os.fsencode(target)
 
     if isinstance(link_name, str):
-        link_name = bytes(link_name, encoding='UTF8')
+        link_name = bytes(link_name, encoding="UTF8")
     if isinstance(link_name, Path):
         link_name = os.fsencode(link_name)
 
     # paths are bytes. this must work for all possible paths
     assert isinstance(target, bytes)
     assert isinstance(link_name, bytes)
-    #ceprint("target:", target)
+    # ceprint("target:", target)
 
-    assert not target.startswith(b'../')
+    assert not target.startswith(b"../")
     # got relative target, that's hard to deal with pass in a fully qualified path
     # if target is also an existing symlink, detect that and dont call realpath()
     # call something that gets the realpath but does not follow any links
@@ -155,12 +175,14 @@ def calculate_relative_symlink_dest(*,
         target_realpath = os.path.abspath(target)
         # still a problem, since this was not fully resolved, it may still have symlinks embedded in it
         # get the folder, resolve that since it's guranteed not to be a symlink
-        target_realpath_folder = b'/'.join(target_realpath.split(b'/')[:-1])
-        #ceprint("target_realpath_folder:", target_realpath_folder)
-        target_realpath_file = target_realpath.split(b'/')[-1]
-        #ceprint("target_realpath_file:", target_realpath_file)
+        target_realpath_folder = b"/".join(target_realpath.split(b"/")[:-1])
+        # ceprint("target_realpath_folder:", target_realpath_folder)
+        target_realpath_file = target_realpath.split(b"/")[-1]
+        # ceprint("target_realpath_file:", target_realpath_file)
         target_realpath_folder_realpath = os.path.realpath(target_realpath_folder)
-        target_realpath = os.path.join(target_realpath_folder_realpath, target_realpath_file)
+        target_realpath = os.path.join(
+            target_realpath_folder_realpath, target_realpath_file
+        )
         # uug. ok now.
 
     elif path_exists(target):
@@ -170,21 +192,21 @@ def calculate_relative_symlink_dest(*,
     elif is_broken_symlink(link_name):
         assert False
 
-    else: # idk
+    else:  # idk
         assert False
 
     if is_broken_symlink(link_name):
         link_name_realpath = os.path.realpath(link_name)
-        #ceprint("link_name_realpath:", link_name_realpath)
+        # ceprint("link_name_realpath:", link_name_realpath)
     elif not path_exists(link_name):
         link_name_realpath = os.path.realpath(link_name)
-        #ceprint("link_name_realpath:", link_name_realpath)
+        # ceprint("link_name_realpath:", link_name_realpath)
 
     # if its a unbroken symlink, and this is being used to see if its the shortest dest
     # os.path.realpath() cant be called, because it resolves the existing link to the target
     elif is_unbroken_symlink(link_name):
         link_name_realpath = os.path.abspath(link_name)
-        #ceprint("link_name_realpath: (abspath)", link_name_realpath)
+        # ceprint("link_name_realpath: (abspath)", link_name_realpath)
         # at this point, all is still not well.
         # link_name_realpath was actually constructed by abspath()
         # so if its really on a different filesystem, the link
@@ -195,61 +217,70 @@ def calculate_relative_symlink_dest(*,
         assert False
 
     if not path_exists(target_realpath):
-        ic(target_realpath, 'does not exist. Refusing to make broken symlink.')
+        ic(target_realpath, "does not exist. Refusing to make broken symlink.")
         raise FileNotFoundError
 
     if is_broken_symlink(link_name_realpath):
-        ic(link_name_realpath, 'exists as a broken symlink. Remove it before trying to make a new symlink. Exiting.')
+        ic(
+            link_name_realpath,
+            "exists as a broken symlink. Remove it before trying to make a new symlink. Exiting.",
+        )
         sys.exit(1)
 
-    link_name_realpath_folder = b'/'.join(link_name_realpath.split(b'/')[:-1])
-    #ceprint("link_name_realpath_folder:", link_name_realpath_folder)
+    link_name_realpath_folder = b"/".join(link_name_realpath.split(b"/")[:-1])
+    # ceprint("link_name_realpath_folder:", link_name_realpath_folder)
     link_name_realpath_folder_realpath = os.path.realpath(link_name_realpath_folder)
-    #ceprint("link_name_realpath_folder_realpath:", link_name_realpath_folder_realpath)
+    # ceprint("link_name_realpath_folder_realpath:", link_name_realpath_folder_realpath)
     if not os.path.isdir(link_name_realpath_folder_realpath):
-        ic(link_name_realpath_folder_realpath, 'does not exist.')
+        ic(link_name_realpath_folder_realpath, "does not exist.")
         raise FileNotFoundError
 
-    relative_target = os.path.relpath(target_realpath, link_name_realpath_folder_realpath)  # relpath does not access the filesystem
-    #ceprint("relative_target:", relative_target)
+    relative_target = os.path.relpath(
+        target_realpath, link_name_realpath_folder_realpath
+    )  # relpath does not access the filesystem
+    # ceprint("relative_target:", relative_target)
     return relative_target
 
 
-def create_relative_symlink(*,
-                            target: Path,
-                            link_name: Path,
-                            verbose: int,
-                            ):
+def create_relative_symlink(
+    *,
+    target: Path,
+    link_name: Path,
+    verbose: Union[bool, int, float],
+):
 
-    relative_target = calculate_relative_symlink_dest(target=target,
-                                                      link_name=link_name,
-                                                      verbose=verbose,
-                                                      )
+    relative_target = calculate_relative_symlink_dest(
+        target=target,
+        link_name=link_name,
+        verbose=verbose,
+    )
     link_name_realpath = os.path.realpath(link_name)
     os.symlink(relative_target, link_name_realpath)
 
 
-def symlink_destination(link): # broken for multi level symlinks
+def symlink_destination(link):  # broken for multi level symlinks
     return os.path.realpath(link)
-    #ceprint("this function is unreliable. fix it. it can loop forever.")
-    #ceprint(link)
-    #"""
-    #Return absolute path for the destination of a symlink. This prob should be split into "first dest" and "final dest"
-    #"""
+    # ceprint("this function is unreliable. fix it. it can loop forever.")
+    # ceprint(link)
+    # """
+    # Return absolute path for the destination of a symlink. This prob should be split into "first dest" and "final dest"
+    # """
     ##assert (os.path.islink(link))
-    #p = link
-    #while os.path.islink(p):
+    # p = link
+    # while os.path.islink(p):
     #    p = os.path.normpath(os.readlink(link))  # huah?
     #    if os.path.isabs(p):
     #        return p
     #    else:
     #        p = os.path.join(os.path.dirname(link), p)
-    #dest = os.path.realpath(p)
-    #return dest
+    # dest = os.path.realpath(p)
+    # return dest
 
 
-def readlinkf(path): # ugly
-    p = subprocess.Popen(['readlink', '-f', path], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+def readlinkf(path):  # ugly
+    p = subprocess.Popen(
+        ["readlink", "-f", path], stdout=subprocess.PIPE, stderr=subprocess.PIPE
+    )
     readlink_output, errors = p.communicate()
     readlink_output_clean = readlink_output.strip()
     if errors:
@@ -262,13 +293,15 @@ def get_abs_path_of_first_symlink_target(path):
     ic(path)
     link_target = os.readlink(path)
     ic(link_target)
-    #assert link_target
+    # assert link_target
     link_dir = os.path.dirname(path)
     link_first_target_abs = os.path.join(link_dir, link_target)
-    #ceprint(link_first_target_abs)
+    # ceprint(link_first_target_abs)
     link_first_target_abs_normpath = os.path.normpath(link_first_target_abs)
-    #ceprint(link_first_target_abs_normpath)
-    link_first_target_abs_normpath_abspath = os.path.abspath(link_first_target_abs_normpath)
+    # ceprint(link_first_target_abs_normpath)
+    link_first_target_abs_normpath_abspath = os.path.abspath(
+        link_first_target_abs_normpath
+    )
     ic(link_first_target_abs_normpath_abspath)
     return link_first_target_abs_normpath_abspath
 
@@ -279,13 +312,13 @@ def get_symlink_target_next(path):
     return target
 
 
-def get_symlink_target_final(path): #broken for bytes
+def get_symlink_target_final(path):  # broken for bytes
     if os.path.islink(path):
         target = os.readlink(path)
         target_joined = os.path.join(os.path.dirname(path), target)
-        target_file = readlinkf(target_joined).decode('UTF-8')
+        target_file = readlinkf(target_joined).decode("UTF-8")
     else:
-        target_file = readlinkf(path).decode('UTF-8')
+        target_file = readlinkf(path).decode("UTF-8")
     return target_file
 
 
@@ -301,11 +334,12 @@ def is_unbroken_symlink(path):
     return False  # path isnt a symlink
 
 
-def symlink_or_exit(target,
-                    link_name,
-                    confirm: bool = False,
-                    verbose: int = False,
-                    ):
+def symlink_or_exit(
+    target,
+    link_name,
+    verbose: Union[bool, int, float],
+    confirm: bool = False,
+):
     if verbose:
         ic(target, link_name)
 
@@ -314,15 +348,16 @@ def symlink_or_exit(target,
     os.symlink(target, link_name)
 
 
-def mkdir_or_exit(folder,
-                  confirm: bool,
-                  verbose: int,
-                  user: Optional[str] = None,
-                  ):
+def mkdir_or_exit(
+    folder,
+    confirm: bool,
+    verbose: Union[bool, int, float],
+    user: Optional[str] = None,
+):
     if verbose:
         ic(folder)
     if confirm:
-        input("press enter to os.makedirs({})".format(folder))
+        input(f"press enter to os.makedirs({folder})")
     try:
         os.makedirs(folder)
     except FileExistsError:
@@ -335,13 +370,14 @@ def mkdir_or_exit(folder,
         shutil.chown(folder, user=user, group=user)
 
 
-def comment_out_line_in_file(*,
-                             path,
-                             line: str,
-                             verbose: int,
-                             startswith: bool = False,
-                             ):
-    '''
+def comment_out_line_in_file(
+    *,
+    path,
+    line: str,
+    verbose: Union[bool, int, float],
+    startswith: bool = False,
+):
+    """
     add a # to the beginning of all instances of line_to_match
     iff there is not already a # preceding line_to_match and
         line_to_match is the only thing on the line
@@ -350,37 +386,38 @@ def comment_out_line_in_file(*,
     if line_to_match is found and all instances are commented return True
     if line_to_match is found and all instances already commented return True
     if line_to_match is not found return False
-    '''
+    """
     line_to_match = line
     del line
-    with open(path, 'r') as rfh:  # bug should hold the fh
+    with open(path, "r") as rfh:  # bug should hold the fh
         lines = rfh.read().splitlines()
     newlines = []
     for line in lines:
         if line_to_match in line:
             line_stripped = line.strip()
-            if line_stripped.startswith('#'):
+            if line_stripped.startswith("#"):
                 newlines.append(line)  # match is already commented out
                 continue
             if line_stripped == line:
-                newlines.append('#' + line)
+                newlines.append("#" + line)
                 continue
             newlines.append(line)
             continue
         newlines.append(line)
     if lines != newlines:
-        with open(path, 'w') as rfh:
-            rfh.write('\n'.join(newlines) + '\n')
+        with open(path, "w") as rfh:
+            rfh.write("\n".join(newlines) + "\n")
         return True
     return True
 
 
-def uncomment_line_in_file(*,
-                           path,
-                           line: str,
-                           verbose: int,
-                           ):
-    '''
+def uncomment_line_in_file(
+    *,
+    path,
+    line: str,
+    verbose: Union[bool, int, float],
+):
+    """
     remove # from the beginning of all instances of line_to_match
     iff there is already a # preceding line_to_match and
         line_to_match is the only thing on the line
@@ -389,17 +426,17 @@ def uncomment_line_in_file(*,
     if line_to_match is found and all instances uncommented return True
     if line_to_match is found and all instances already uncommented return True
     if line_to_match is not found return False
-    '''
+    """
     line_to_match = line
     del line
-    with open(path, 'r') as rfh:  # bug should hold the fh
+    with open(path, "r") as rfh:  # bug should hold the fh
         lines = rfh.read().splitlines()
     newlines = []
     uncommented = False
     for line in lines:
         if line_to_match in line:
             line_stripped = line.strip()
-            if line_stripped.startswith('#'):
+            if line_stripped.startswith("#"):
                 newlines.append(line[1:])
                 uncommented = True
                 continue
@@ -411,34 +448,37 @@ def uncomment_line_in_file(*,
             continue
         newlines.append(line)
     if lines != newlines:
-        with open(path, 'w') as rfh:
-            rfh.write('\n'.join(newlines) + '\n')
+        with open(path, "w") as rfh:
+            rfh.write("\n".join(newlines) + "\n")
         return True
     if uncommented:
         return True
     return False
 
 
-@retry_on_exception(exception=OSError,
-                    errno=errno.ENOSPC,)
-def write_line_to_file(*,
-                       line,
-                       path: Path,
-                       verbose: int,
-                       unique: bool = False,
-                       make_new_if_necessary: bool = True,
-                       unlink_first: bool = False,
-                       ) -> bool:
-    '''
+@retry_on_exception(
+    exception=OSError,
+    errno=errno.ENOSPC,
+)
+def write_line_to_file(
+    *,
+    line,
+    path: Path,
+    verbose: Union[bool, int, float],
+    unique: bool = False,
+    make_new_if_necessary: bool = True,
+    unlink_first: bool = False,
+) -> bool:
+    """
     Write line to path
     if unique_line == True, write line iff line not in path.
-    '''
+    """
     path = Path(path).expanduser()
     if isinstance(line, str):
-        line = line.encode('UTF8')
+        line = line.encode("UTF8")
     assert isinstance(line, bytes)
-    assert line.count(b'\n') == 1
-    assert line.endswith(b'\n')
+    assert line.count(b"\n") == 1
+    assert line.endswith(b"\n")
 
     if unlink_first:
         assert not unique
@@ -446,7 +486,7 @@ def write_line_to_file(*,
             os.unlink(path)
         except FileNotFoundError:
             pass  # race condition
-        with open(path, 'xb') as fh:
+        with open(path, "xb") as fh:
             if not unique:
                 fh.write(line)
                 return True
@@ -457,7 +497,7 @@ def write_line_to_file(*,
             return False
     else:
         try:
-            with open(path, 'rb+') as fh:
+            with open(path, "rb+") as fh:
                 if not unique:
                     fh.write(line)
                     return True
@@ -469,24 +509,25 @@ def write_line_to_file(*,
 
         except FileNotFoundError as e:
             if make_new_if_necessary:
-                with open(path, 'xb') as fh:
+                with open(path, "xb") as fh:
                     fh.write(line)
                     return True
             else:
                 raise e
 
 
-def line_exists_in_file(*,
-                        line,
-                        file_to_check,
-                        verbose: int,
-                        ):
+def line_exists_in_file(
+    *,
+    line,
+    file_to_check,
+    verbose: Union[bool, int, float],
+):
     if isinstance(line, str):
-        line = line.encode('UTF8')
+        line = line.encode("UTF8")
     assert isinstance(line, bytes)
-    assert line.count(b'\n') == 1
-    assert line.endswith(b'\n')
-    with open(file_to_check, 'rb') as fh:
+    assert line.count(b"\n") == 1
+    assert line.endswith(b"\n")
+    with open(file_to_check, "rb") as fh:
         if line in fh:
             return True
         return False
@@ -494,17 +535,17 @@ def line_exists_in_file(*,
 
 def backup_file_if_exists(file_to_backup):
     timestamp = str(time.time())
-    dest_file = file_to_backup + '.bak.' + timestamp
+    dest_file = file_to_backup + ".bak." + timestamp
     try:
-        with open(file_to_backup, 'rb') as sf:
-            with open(dest_file, 'xb') as df:
+        with open(file_to_backup, "rb") as sf:
+            with open(dest_file, "xb") as df:
                 copyfileobj(sf, df)
     except FileNotFoundError:
-        pass    # skip backup if file does not exist
+        pass  # skip backup if file does not exist
 
 
 def read_file_bytes(path):
-    with open(path, 'rb') as fh:
+    with open(path, "rb") as fh:
         file_bytes = fh.read()
     return file_bytes
 
@@ -519,17 +560,20 @@ def file_exists_nonzero(infile):
 def get_file_size(filename):
     filename = Path(filename)
     size = filename.lstat().st_size
-    #size = os.path.getsize(filename)
+    # size = os.path.getsize(filename)
     return size
 
 
-def points_to_data(path: Path,
-                   *,
-                   empty_ok: bool = False,
-                   ):
-    assert isinstance(path, Path)
+def points_to_data(
+    path: Path,
+    *,
+    empty_ok: bool = False,
+):
+    # assert isinstance(path, Path)
     try:
-        size = os.path.getsize(path)  # annoyingly, os.stat(False) == os.stat(0) == os.stat('/dev/stdout')
+        size = os.path.getsize(
+            path
+        )  # annoyingly, os.stat(False) == os.stat(0) == os.stat('/dev/stdout')
     except FileNotFoundError:
         return False
     if empty_ok:
@@ -542,7 +586,7 @@ def points_to_data(path: Path,
 def empty_file(path: Path):
     assert isinstance(path, Path)
     if not path_exists(path):
-        #return True #hm
+        # return True #hm
         raise FileNotFoundError
     if os.path.isfile(path):
         if os.path.getsize(path) == 0:
@@ -559,8 +603,8 @@ def make_file_immutable(infile):
     os.system(command)
     result_command = "/usr/bin/lsattr " + infile
     result = os.popen(result_command).read()
-    if result[4] != 'i':
-        epprint('make_file_immutable(%s) failed. Exiting')
+    if result[4] != "i":
+        epprint("make_file_immutable(%s) failed. Exiting")
         raise UnableToSetImmutableError(command)
     return True
 
@@ -576,7 +620,9 @@ def rename_or_exit(src, dest):
 
 def move_file_only_if_new_or_exit(source, dest):
     try:
-        shutil.move(source, dest)   #todo: fix race condition beacuse shutil.move overwrites existing dest
+        shutil.move(
+            source, dest
+        )  # todo: fix race condition beacuse shutil.move overwrites existing dest
     except Exception as e:
         epprint("Exception: %s", e)
         epprint("move_file_only_if_new_or_exit(): error. Exiting.")
@@ -585,15 +631,19 @@ def move_file_only_if_new_or_exit(source, dest):
 
 def write_file(infile, data):
     assert len(data) > 0
-    #On Py3 we have one text type, str which holds Unicode data and two byte types; bytes and bytearray.
-    if isinstance(data, str): #unicode in py3
-        with open(infile, "x", encoding='utf-8') as fd:
+    # On Py3 we have one text type, str which holds Unicode data and two byte types; bytes and bytearray.
+    if isinstance(data, str):  # unicode in py3
+        with open(infile, "x", encoding="utf-8") as fd:
             fd.write(data)
     elif isinstance(data, bytes):
         with open(infile, "xb") as fd:
             fd.write(data)
     else:
-        epprint("Unknown type for data: %s. Could not create python file descriptor: %s Exiting.", type(data), infile)
+        epprint(
+            "Unknown type for data: %s. Could not create python file descriptor: %s Exiting.",
+            type(data),
+            infile,
+        )
         os._exit(1)
 
 
@@ -604,7 +654,7 @@ def is_regular_file(path):
     return False
 
 
-#def get_file_type(path):
+# def get_file_type(path):
 #    line_id = magic.from_file(path)
 #    return line_id
 
@@ -629,11 +679,12 @@ def combine_files(source: Path, destination: Path, buffer=65535):
 # https://github.com/twisted/twisted/blob/trunk/twisted/python/filepath.py
 # https://stackoverflow.com/questions/1430446/create-a-temporary-fifo-named-pipe-in-python
 @contextmanager
-def temp_fifo(verbose: int = False,
-              ):
+def temp_fifo(
+    verbose: Union[bool, int, float],
+):
     """Context Manager for creating named pipes with temporary names."""
     tmpdir = tempfile.mkdtemp()
-    filename = os.path.join(tmpdir, 'fifo')  # Temporary filename
+    filename = os.path.join(tmpdir, "fifo")  # Temporary filename
     if verbose:
         ic(filename)
     os.mkfifo(filename)  # Create FIFO
@@ -644,10 +695,11 @@ def temp_fifo(verbose: int = False,
         os.rmdir(tmpdir)  # Remove directory
 
 
-def get_free_space_at_path(*,
-                           path: Path,
-                           verbose: int,
-                           ):
+def get_free_space_at_path(
+    *,
+    path: Path,
+    verbose: Union[bool, int, float],
+):
     assert isinstance(path, Path)
     free_bytes = os.statvfs(path).f_ffree
     if verbose:
@@ -656,15 +708,19 @@ def get_free_space_at_path(*,
     return free_bytes
 
 
-def get_path_with_most_free_space(*,
-                                  pathlist: list[Path],
-                                  verbose: int,
-                                  ):
+def get_path_with_most_free_space(
+    *,
+    pathlist: list[Path],
+    verbose: Union[bool, int, float],
+):
     ic(pathlist)
     assert isinstance(pathlist, (list, tuple))
     largest: Optional[tuple[int, Path]] = None
     for path in pathlist:
-        free_bytes: int = get_free_space_at_path(path=path, verbose=verbose,)
+        free_bytes: int = get_free_space_at_path(
+            path=path,
+            verbose=verbose,
+        )
         ic(path, free_bytes)
         if not largest:
             largest = (free_bytes, path)
@@ -680,9 +736,9 @@ def get_path_with_most_free_space(*,
 
 
 def longest_prefix(iter0, iter1):
-    '''
+    """
     Returns the longest common prefix of the given two iterables.
-    '''
+    """
     _longest_prefix = []
     for (elmt0, elmt1) in zip(iter0, iter1):
         if elmt0 != elmt1:
@@ -691,13 +747,14 @@ def longest_prefix(iter0, iter1):
     return _longest_prefix
 
 
-def paths_are_identical(path1: Path,
-                        path2: Path,
-                        *,
-                        time: bool = False,
-                        perms: bool = False,
-                        verbose: int = False,
-                        ):
+def paths_are_identical(
+    path1: Path,
+    path2: Path,
+    *,
+    time: bool = False,
+    perms: bool = False,
+    verbose: Union[bool, int, float],
+):
 
     assert isinstance(path1, Path)
     assert isinstance(path2, Path)
@@ -716,8 +773,11 @@ def paths_are_identical(path1: Path,
         return False
 
     if path1_type in [32768, 24576]:  # file or device
-        path1_hash = sha3_256_hash_file(path1)
-        path2_hash = sha3_256_hash_file(path2)
+        path1_hash = sha3_256_hash_file(path1, verbose=verbose)
+        path2_hash = sha3_256_hash_file(
+            path2,
+            verbose=verbose,
+        )
         if verbose:
             ic(path1_hash)
             ic(path2_hash)
@@ -727,7 +787,7 @@ def paths_are_identical(path1: Path,
             ic(path2, path2_hash)
             return False
 
-    if path1_type == 40960:     # symlink
+    if path1_type == 40960:  # symlink
         path1_target = os.readlink(path1)
         path2_target = os.readlink(path2)
         if verbose:
@@ -744,7 +804,7 @@ def paths_are_identical(path1: Path,
 
 def path_is_dir_or_symlink_to_dir(path):
     # unlike os.path.exists(False), os.path.isdir(False) returns False
-    if os.path.isdir(path): # returns False if it's a symlink to a file
+    if os.path.isdir(path):  # returns False if it's a symlink to a file
         return True
     return False
 
@@ -752,12 +812,13 @@ def path_is_dir_or_symlink_to_dir(path):
 def path_exists(path):
     if path is None:
         return False
-    return os.path.lexists(path) #  returns True for broken symlinks
+    return os.path.lexists(path)  #  returns True for broken symlinks
 
 
-def path_is_block_special(path,
-                          follow_symlinks: bool = False,
-                          ):
+def path_is_block_special(
+    path: Path,
+    follow_symlinks: bool = False,
+):
     if path_exists(path):
         mode = os.stat(path, follow_symlinks=follow_symlinks).st_mode
         if stat.S_ISBLK(mode):
@@ -777,28 +838,30 @@ def path_is_file(path: Path):
     return False
 
 
-def check_or_create_dir(folder, confirm=True):
-    #assert isinstance(folder, bytes)
+def check_or_create_dir(folder, confirm: bool = True):
+    # assert isinstance(folder, bytes)
     if not os.path.isdir(folder):
         if confirm:
             epprint("The folder:")
             epprint(folder)
-            epprint("does not exist. Type yes to create it and continue, otherwise exiting:")
+            epprint(
+                "does not exist. Type yes to create it and continue, otherwise exiting:"
+            )
             epprint("make dir:")
             epprint(folder, end=None)
             make_folder_answer = input(": ")
             if make_folder_answer.lower() != "yes":
                 epprint("Exiting before mkdir.")
                 os._exit(1)
-        create_dir(folder)
+        os.makedirs(folder)
         return True
 
 
-def create_dir(folder):
-    try:
-        os.makedirs(folder, exist_ok=True)
-    except FileExistsError:
-        pass
+# def create_dir(folder):
+#    try:
+#        os.makedirs(folder, exist_ok=True)
+#    except FileExistsError:
+#        pass
 
 
 def chdir_or_exit(targetdir):
@@ -835,6 +898,8 @@ def remove_empty_folders(path, remove_root=True, verbose=False):
 def really_is_dir(path: Path):
     if path.is_symlink():
         return False
-    if path.is_dir(): # is_dir() answers False for broken symlinks, and crashes with an OSError on self-symlinks
+    if (
+        path.is_dir()
+    ):  # is_dir() answers False for broken symlinks, and crashes with an OSError on self-symlinks
         return True
     return False
