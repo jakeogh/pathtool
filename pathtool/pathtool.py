@@ -618,15 +618,15 @@ def rename_or_exit(src, dest):
         sys.exit(1)
 
 
-def move_file_only_if_new_or_exit(source, dest):
-    try:
-        shutil.move(
-            source, dest
-        )  # todo: fix race condition beacuse shutil.move overwrites existing dest
-    except Exception as e:
-        epprint("Exception: %s", e)
-        epprint("move_file_only_if_new_or_exit(): error. Exiting.")
-        sys.exit(1)
+# def move_file_only_if_new_or_exit(source, dest):
+#    try:
+#        shutil.move(
+#            source, dest
+#        )  # todo: fix race condition beacuse shutil.move overwrites existing dest
+#    except Exception as e:
+#        epprint("Exception: %s", e)
+#        epprint("move_file_only_if_new_or_exit(): error. Exiting.")
+#        sys.exit(1)
 
 
 def write_file(infile, data):
@@ -654,12 +654,7 @@ def is_regular_file(path):
     return False
 
 
-# def get_file_type(path):
-#    line_id = magic.from_file(path)
-#    return line_id
-
-
-def combine_files(source: Path, destination: Path, buffer=65535):
+def combine_files(source: Path, destination: Path, buffer: int = 65535):
     assert is_regular_file(source)
     assert is_regular_file(destination)
     with open(source, "rb") as sfh:
