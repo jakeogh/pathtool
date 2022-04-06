@@ -389,23 +389,23 @@ def comment_out_line_in_file(
     """
     line_to_match = line
     del line
-    with open(path, "r") as rfh:  # bug should hold the fh
+    with open(path, "r", encoding="utf8") as rfh:  # bug should hold the fh
         lines = rfh.read().splitlines()
     newlines = []
-    for line in lines:
-        if line_to_match in line:
-            line_stripped = line.strip()
-            if line_stripped.startswith("#"):
-                newlines.append(line)  # match is already commented out
+    for line_to_check in lines:
+        if line_to_match in line_to_check:
+            line_to_check_stripped = line_to_check.strip()
+            if line_to_check_stripped.startswith("#"):
+                newlines.append(line_to_check)  # match is already commented out
                 continue
-            if line_stripped == line:
-                newlines.append("#" + line)
+            if line_to_check_stripped == line_to_check:
+                newlines.append("#" + line_to_check)
                 continue
-            newlines.append(line)
+            newlines.append(line_to_check)
             continue
-        newlines.append(line)
+        newlines.append(line_to_check)
     if lines != newlines:
-        with open(path, "w") as rfh:
+        with open(path, "w", encoding="utf8") as rfh:
             rfh.write("\n".join(newlines) + "\n")
         return True
     return True
