@@ -10,7 +10,7 @@ import fastentrypoints
 if not sys.version_info[0] == 3:
     sys.exit("Python 3 is required. Use: 'python3 setup.py install'")
 
-dependencies = ["icecream", "click", "colorama", "click-command-tree"]
+dependencies = ["icecream", "click", "colorama"]
 
 config = {
     "version": "0.1",
