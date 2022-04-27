@@ -1,4 +1,4 @@
-#from .pathtool import is_unbroken_symlink_to_target
+# from .pathtool import is_unbroken_symlink_to_target
 from .pathtool import backup_file_if_exists
 from .pathtool import check_or_create_dir
 from .pathtool import comment_out_line_in_file
@@ -17,6 +17,7 @@ from .pathtool import path_exists
 from .pathtool import path_is_block_special
 from .pathtool import path_is_dir
 from .pathtool import path_is_file
+from .pathtool import paths_are_identical
 from .pathtool import points_to_data
 from .pathtool import read_file_bytes
 from .pathtool import really_is_dir
