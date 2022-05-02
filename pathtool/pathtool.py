@@ -489,8 +489,10 @@ def write_line_to_file(
     if unique_line == True, write line iff line not in path.
     """
     path = Path(path).expanduser()
+
     if isinstance(line, str):
         line = line.encode("UTF8")
+        ic(line)
     assert isinstance(line, bytes)
     assert line.count(b"\n") == 1
     assert line.endswith(b"\n")
