@@ -598,15 +598,29 @@ class UnableToSetImmutableError(ValueError):
     pass
 
 
-def make_file_immutable(infile):
-    command = "sudo /usr/bin/chattr +i " + infile
+def remove_immutable_flag(path):
+    _path = Path(path)
+    current_flags = _path.lstat()
+
+
+def make_file_not_immutable(path: Path, *, verbose: Union[bool, int, float]):
+    command = "sudo /usr/bin/chattr -i " + path.as_posix()
     os.system(command)
-    result_command = "/usr/bin/lsattr " + infile
+    result_command = "/usr/bin/lsattr " + path.as_posix()
+    result = os.popen(result_command).read()
+    if result[4] == "i":
+        epprint(f"make_file_not_immutable({path.as_posix()}) failed")
+        raise UnableToSetImmutableError(command)
+
+
+def make_file_immutable(path: Path, *, verbose: Union[bool, int, float]):
+    command = "sudo /usr/bin/chattr +i " + path.as_posix()
+    os.system(command)
+    result_command = "/usr/bin/lsattr " + path.as_posix()
     result = os.popen(result_command).read()
     if result[4] != "i":
-        epprint("make_file_immutable(%s) failed. Exiting")
+        epprint(f"make_file_immutable({path.as_posix()}) failed")
         raise UnableToSetImmutableError(command)
-    return True
 
 
 def rename_or_exit(src, dest):

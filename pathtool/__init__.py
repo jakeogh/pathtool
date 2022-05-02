@@ -12,6 +12,8 @@ from .pathtool import gurantee_symlink
 from .pathtool import is_broken_symlink
 from .pathtool import is_regular_file
 from .pathtool import is_unbroken_symlink
+from .pathtool import make_file_immutable
+from .pathtool import make_file_not_immutable
 from .pathtool import mkdir_or_exit
 from .pathtool import path_exists
 from .pathtool import path_is_block_special
