@@ -644,6 +644,7 @@ def delete_file_and_recreate_empty_immutable(
     path: Union[str, Path], *, verbose: Union[bool, int, float] = False
 ):
     path = Path(path)
+    make_file_not_immutable(path, verbose=verbose)
     path.unlink()
     path.touch()
     make_file_immutable(path=path, verbose=verbose)
