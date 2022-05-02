@@ -36,6 +36,7 @@ from typing import Union
 # import magic  # sys-apps/file  #PIA
 from asserttool import ic
 from epprint import epprint
+from eprint import eprint
 from hashtool import sha3_256_hash_file
 from psutil import disk_usage
 from retry_on_exception import retry_on_exception
@@ -335,21 +336,28 @@ def is_unbroken_symlink(path):
 
 
 def symlink_or_exit(
-    target,
-    link_name,
-    verbose: Union[bool, int, float],
+    *,
+    target: Path,
+    link_name: Path,
     confirm: bool = False,
+    verbose: Union[bool, int, float],
 ):
     if verbose:
         ic(target, link_name)
 
     if confirm:
-        input("press enter to os.symlink({}, {})".format(target, link_name))
-    os.symlink(target, link_name)
+        input(f"press enter to os.symlink({target}, {link_name})")
+
+    try:
+        os.symlink(target, link_name)
+    except Exception as e:
+        eprint("Got Exception: %s", e)
+        eprint(f"Unable to symlink link_name: {link_name} to target: {target} Exiting.")
+        raise e
 
 
 def mkdir_or_exit(
-    folder,
+    folder: Path,
     confirm: bool,
     verbose: Union[bool, int, float],
     user: Optional[str] = None,
@@ -357,14 +365,14 @@ def mkdir_or_exit(
     if verbose:
         ic(folder)
     if confirm:
-        input(f"press enter to os.makedirs({folder})")
+        input(f"press enter to os.makedirs({folder.as_posix()})")
     try:
         os.makedirs(folder)
     except FileExistsError:
         assert path_is_dir(folder)
     except Exception as e:
-        ic("Exception: %s", e)
-        ic("Unable to os.mkdir(%s). Exiting.", folder)
+        ic("Exception:", e)
+        ic(f"Unable to os.mkdir({folder.as_posix()}). Exiting.", folder)
         sys.exit(1)
     if user:
         shutil.chown(folder, user=user, group=user)
