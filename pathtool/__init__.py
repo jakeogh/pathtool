@@ -3,6 +3,7 @@ from .pathtool import backup_file_if_exists
 from .pathtool import check_or_create_dir
 from .pathtool import comment_out_line_in_file
 from .pathtool import create_relative_symlink
+from .pathtool import delete_file_and_recreate_empty_immutable
 from .pathtool import empty_file
 from .pathtool import file_exists_nonzero
 from .pathtool import get_file_size

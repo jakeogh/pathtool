@@ -428,7 +428,7 @@ def comment_out_line_in_file(
 
 def uncomment_line_in_file(
     *,
-    path,
+    path: Path,
     line: str,
     verbose: Union[bool, int, float],
 ):
@@ -444,7 +444,7 @@ def uncomment_line_in_file(
     """
     line_to_match = line
     del line
-    with open(path, "r") as rfh:  # bug should hold the fh
+    with open(path, "r", encoding="utf8") as rfh:  # bug should hold the fh
         lines = rfh.read().splitlines()
     newlines = []
     uncommented = False
@@ -463,7 +463,7 @@ def uncomment_line_in_file(
             continue
         newlines.append(line)
     if lines != newlines:
-        with open(path, "w") as rfh:
+        with open(path, "w", encoding="utf8") as rfh:
             rfh.write("\n".join(newlines) + "\n")
         return True
     if uncommented:
@@ -613,9 +613,9 @@ class UnableToSetImmutableError(ValueError):
     pass
 
 
-def remove_immutable_flag(path):
-    _path = Path(path)
-    current_flags = _path.lstat()
+# def remove_immutable_flag(path):
+#    _path = Path(path)
+#    current_flags = _path.lstat()
 
 
 def make_file_not_immutable(path: Path, *, verbose: Union[bool, int, float]):
@@ -636,6 +636,14 @@ def make_file_immutable(path: Path, *, verbose: Union[bool, int, float]):
     if result[4] != "i":
         epprint(f"make_file_immutable({path.as_posix()}) failed")
         raise UnableToSetImmutableError(command)
+
+
+def delete_file_and_recreate_empty_immutable(
+    path: Path, *, verbose: Union[bool, int, float]
+):
+    path.unlink()
+    path.touch()
+    make_file_immutable(path=path, verbose=verbose)
 
 
 def rename_or_exit(src, dest):
