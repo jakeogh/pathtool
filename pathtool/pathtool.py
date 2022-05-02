@@ -42,6 +42,10 @@ from psutil import disk_usage
 from retry_on_exception import retry_on_exception
 
 
+class SelfSymlinkError(ValueError):
+    pass
+
+
 def cli_path(
     path: str,
     verbose: Union[bool, int, float],
@@ -347,6 +351,9 @@ def symlink_or_exit(
 
     if confirm:
         input(f"press enter to os.symlink({target}, {link_name})")
+
+    if link_name.resolve() == target.resolve():
+        raise SelfSymlinkError(target, link_name)
 
     try:
         os.symlink(target, link_name)
