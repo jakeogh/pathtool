@@ -477,7 +477,7 @@ def uncomment_line_in_file(
 )
 def write_line_to_file(
     *,
-    line,
+    line: Union[str, bytes],
     path: Path,
     verbose: Union[bool, int, float],
     unique: bool = False,
@@ -533,7 +533,7 @@ def write_line_to_file(
 
 def line_exists_in_file(
     *,
-    line,
+    line: Union[str, bytes],
     file_to_check,
     verbose: Union[bool, int, float],
 ):
