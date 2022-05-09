@@ -28,6 +28,7 @@ import sys
 import tempfile
 import time
 from contextlib import contextmanager
+from math import inf
 from pathlib import Path
 from shutil import copyfileobj
 from typing import Optional
@@ -814,9 +815,9 @@ def paths_are_identical(
             path2,
             verbose=verbose,
         )
-        if verbose:
-            ic(path1_hash)
-            ic(path2_hash)
+        if verbose == inf:
+            ic(path1_hash.hex())
+            ic(path2_hash.hex())
 
         if path1_hash != path2_hash:
             ic(path1, path1_hash)
