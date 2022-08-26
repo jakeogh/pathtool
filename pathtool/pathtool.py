@@ -1,22 +1,23 @@
 #!/usr/bin/env python3
 # -*- coding: utf8 -*-
 
-# pylint: disable=C0111  # docstrings are always outdated and wrong
-# pylint: disable=W0511  # todo is encouraged
-# pylint: disable=C0301  # line too long
-# pylint: disable=R0902  # too many instance attributes
-# pylint: disable=C0302  # too many lines in module
-# pylint: disable=C0103  # single letter var names, func name too descriptive
-# pylint: disable=R0911  # too many return statements
-# pylint: disable=R0912  # too many branches
-# pylint: disable=R0915  # too many statements
-# pylint: disable=R0913  # too many arguments
-# pylint: disable=R1702  # too many nested blocks
-# pylint: disable=R0914  # too many local variables
-# pylint: disable=R0903  # too few public methods
-# pylint: disable=E1101  # no member for base
-# pylint: disable=W0201  # attribute defined outside __init__
-# pylint: disable=R0916  # Too many boolean expressions in if statement
+# pylint: disable=missing-docstring               # [C0111] docstrings are always outdated and wrong
+# pylint: disable=fixme                           # [W0511] todo is encouraged
+# pylint: disable=line-too-long                   # [C0301]
+# pylint: disable=too-many-instance-attributes    # [R0902]
+# pylint: disable=too-many-lines                  # [C0302] too many lines in module
+# pylint: disable=invalid-name                    # [C0103] single letter var names, name too descriptive
+# pylint: disable=too-many-return-statements      # [R0911]
+# pylint: disable=too-many-branches               # [R0912]
+# pylint: disable=too-many-statements             # [R0915]
+# pylint: disable=too-many-arguments              # [R0913]
+# pylint: disable=too-many-nested-blocks          # [R1702]
+# pylint: disable=too-many-locals                 # [R0914]
+# pylint: disable=too-few-public-methods          # [R0903]
+# pylint: disable=no-member                       # [E1101] no member for base
+# pylint: disable=attribute-defined-outside-init  # [W0201]
+# pylint: disable=too-many-boolean-expressions    # [R0916] in if statement
+from __future__ import annotations
 
 import errno
 import fcntl
@@ -31,8 +32,6 @@ from contextlib import contextmanager
 from math import inf
 from pathlib import Path
 from shutil import copyfileobj
-from typing import Optional
-from typing import Union
 
 # import magic  # sys-apps/file  #PIA
 from asserttool import ic
@@ -49,7 +48,7 @@ class SelfSymlinkError(ValueError):
 
 def cli_path(
     path: str,
-    verbose: Union[bool, int, float],
+    verbose: bool | int | float,
 ):
     # problem, Path('~').expanduser() is ambigious
     # when there is a file named ~ in CWD
@@ -136,7 +135,7 @@ def gurantee_symlink(
     target: Path,
     link_name: Path,
     relative: bool,
-    verbose: Union[bool, int, float],
+    verbose: bool | int | float,
 ):
     # todo advisorylock
     if relative:
@@ -152,7 +151,7 @@ def calculate_relative_symlink_dest(
     *,
     target: Path,
     link_name: Path,
-    verbose: Union[bool, int, float],
+    verbose: bool | int | float,
 ):
 
     # todo eval https://docs.python.org/3/library/os.path.html#os.path.commonpath
@@ -252,7 +251,7 @@ def create_relative_symlink(
     *,
     target: Path,
     link_name: Path,
-    verbose: Union[bool, int, float],
+    verbose: bool | int | float,
 ):
 
     relative_target = calculate_relative_symlink_dest(
@@ -345,7 +344,7 @@ def symlink_or_exit(
     target: Path,
     link_name: Path,
     confirm: bool = False,
-    verbose: Union[bool, int, float],
+    verbose: bool | int | float,
 ):
     if verbose:
         ic(target, link_name)
@@ -367,8 +366,8 @@ def symlink_or_exit(
 def mkdir_or_exit(
     folder: Path,
     confirm: bool,
-    verbose: Union[bool, int, float],
-    user: Optional[str] = None,
+    verbose: bool | int | float,
+    user: None | str = None,
 ):
     if verbose:
         ic(folder)
@@ -390,7 +389,7 @@ def comment_out_line_in_file(
     *,
     path,
     line: str,
-    verbose: Union[bool, int, float],
+    verbose: bool | int | float,
     startswith: bool = False,
 ):
     """
@@ -431,7 +430,7 @@ def uncomment_line_in_file(
     *,
     path: Path,
     line: str,
-    verbose: Union[bool, int, float],
+    verbose: bool | int | float,
 ):
     """
     remove # from the beginning of all instances of line_to_match
@@ -478,9 +477,9 @@ def uncomment_line_in_file(
 )
 def write_line_to_file(
     *,
-    line: Union[str, bytes],
+    line: str | bytes,
     path: Path,
-    verbose: Union[bool, int, float],
+    verbose: bool | int | float,
     unique: bool = False,
     make_new_if_necessary: bool = True,
     unlink_first: bool = False,
@@ -536,9 +535,9 @@ def write_line_to_file(
 
 def line_exists_in_file(
     *,
-    line: Union[str, bytes],
+    line: str | bytes,
     file_to_check,
-    verbose: Union[bool, int, float],
+    verbose: bool | int | float,
 ):
     if isinstance(line, str):
         line = line.encode("UTF8")
@@ -562,7 +561,7 @@ def backup_file_if_exists(file_to_backup):
         pass  # skip backup if file does not exist
 
 
-def read_file_bytes(path):
+def read_file_bytes(path, verbose: bool | int | float):
     with open(path, "rb") as fh:
         file_bytes = fh.read()
     return file_bytes
@@ -621,7 +620,7 @@ class UnableToSetImmutableError(ValueError):
 #    current_flags = _path.lstat()
 
 
-def make_file_not_immutable(path: Path, *, verbose: Union[bool, int, float]):
+def make_file_not_immutable(path: Path, *, verbose: bool | int | float):
     command = "sudo /usr/bin/chattr -i " + path.as_posix()
     os.system(command)
     result_command = "/usr/bin/lsattr " + path.as_posix()
@@ -631,7 +630,7 @@ def make_file_not_immutable(path: Path, *, verbose: Union[bool, int, float]):
         raise UnableToSetImmutableError(command)
 
 
-def make_file_immutable(path: Path, *, verbose: Union[bool, int, float]):
+def make_file_immutable(path: Path, *, verbose: bool | int | float):
     command = "sudo /usr/bin/chattr +i " + path.as_posix()
     os.system(command)
     result_command = "/usr/bin/lsattr " + path.as_posix()
@@ -642,7 +641,7 @@ def make_file_immutable(path: Path, *, verbose: Union[bool, int, float]):
 
 
 def delete_file_and_recreate_empty_immutable(
-    path: Union[str, Path], *, verbose: Union[bool, int, float] = False
+    path: str | Path, *, verbose: bool | int | float = False
 ):
     path = Path(path)
     make_file_not_immutable(path, verbose=verbose)
@@ -717,7 +716,7 @@ def combine_files(source: Path, destination: Path, buffer: int = 65535):
 # https://stackoverflow.com/questions/1430446/create-a-temporary-fifo-named-pipe-in-python
 @contextmanager
 def temp_fifo(
-    verbose: Union[bool, int, float],
+    verbose: bool | int | float,
 ):
     """Context Manager for creating named pipes with temporary names."""
     tmpdir = tempfile.mkdtemp()
@@ -735,7 +734,7 @@ def temp_fifo(
 def get_free_space_at_path(
     *,
     path: Path,
-    verbose: Union[bool, int, float],
+    verbose: bool | int | float,
 ):
     assert isinstance(path, Path)
     free_bytes = os.statvfs(path).f_ffree
@@ -748,11 +747,11 @@ def get_free_space_at_path(
 def get_path_with_most_free_space(
     *,
     pathlist: list[Path],
-    verbose: Union[bool, int, float],
+    verbose: bool | int | float,
 ):
     ic(pathlist)
     assert isinstance(pathlist, (list, tuple))
-    largest: Optional[tuple[int, Path]] = None
+    largest: None | tuple[int, Path] = None
     for path in pathlist:
         free_bytes: int = get_free_space_at_path(
             path=path,
@@ -790,7 +789,7 @@ def paths_are_identical(
     *,
     time: bool = False,
     perms: bool = False,
-    verbose: Union[bool, int, float],
+    verbose: bool | int | float,
 ):
 
     assert isinstance(path1, Path)
