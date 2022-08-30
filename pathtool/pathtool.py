@@ -576,7 +576,8 @@ def file_exists_nonzero(infile):
 
 
 def get_file_size(filename):
-    filename = Path(filename)
+    filename = Path(os.fsdecode(filename)).resolve()
+    # filename = Path(filename)
     size = filename.lstat().st_size
     # size = os.path.getsize(filename)
     return size
