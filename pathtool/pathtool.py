@@ -28,6 +28,7 @@ import subprocess
 import sys
 import tempfile
 import time
+from collections.abc import Sequence
 from contextlib import contextmanager
 from math import inf
 from pathlib import Path
@@ -579,6 +580,21 @@ def get_file_size(filename):
     size = filename.lstat().st_size
     # size = os.path.getsize(filename)
     return size
+
+
+def return_largest_file(files: Sequence[Path], verbose: bool | int | float):
+    largest_file = None
+    largest_file_size = None
+    for file in files:
+        file_size = get_file_size(file)
+        if largest_file_size is None:
+            largest_file_size = file_size
+            largest_file = file
+        elif file_size > largest_file_size:
+            largest_file = file
+            largest_file_size = file_size
+
+    return largest_file
 
 
 def points_to_data(
