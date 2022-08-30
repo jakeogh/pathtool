@@ -675,17 +675,6 @@ def rename_or_exit(src, dest):
         sys.exit(1)
 
 
-# def move_file_only_if_new_or_exit(source, dest):
-#    try:
-#        shutil.move(
-#            source, dest
-#        )  # todo: fix race condition beacuse shutil.move overwrites existing dest
-#    except Exception as e:
-#        epprint("Exception: %s", e)
-#        epprint("move_file_only_if_new_or_exit(): error. Exiting.")
-#        sys.exit(1)
-
-
 def write_file(infile, data):
     assert len(data) > 0
     # On Py3 we have one text type, str which holds Unicode data and two byte types; bytes and bytearray.
