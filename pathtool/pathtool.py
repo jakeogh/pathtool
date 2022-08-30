@@ -582,7 +582,7 @@ def get_file_size(filename):
     return size
 
 
-def return_largest_file(files: Sequence[Path], verbose: bool | int | float):
+def largest_file(files: Sequence[Path], verbose: bool | int | float):
     largest_file = None
     largest_file_size = None
     for file in files:
