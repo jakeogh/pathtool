@@ -12,6 +12,7 @@ if not sys.version_info[0] == 3:
 
 dependencies = [
     "hashtool @ git+https://git@github.com/jakeogh/hashtool",
+    "psutil",
 ]
 
 config = {
