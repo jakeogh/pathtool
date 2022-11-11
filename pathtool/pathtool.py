@@ -639,9 +639,12 @@ class UnableToSetImmutableError(ValueError):
 
 def make_file_not_immutable(path: Path, *, verbose: bool | int | float):
     command = "sudo /usr/bin/chattr -i " + path.as_posix()
+    ic(command)
     os.system(command)
     result_command = "/usr/bin/lsattr " + path.as_posix()
+    ic(result_command)
     result = os.popen(result_command).read()
+    ic(result)
     if result[4] == "i":
         epprint(f"make_file_not_immutable({path.as_posix()}) failed")
         raise UnableToSetImmutableError(command)
