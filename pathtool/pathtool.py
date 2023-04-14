@@ -49,7 +49,7 @@ class SelfSymlinkError(ValueError):
 
 def cli_path(
     path: str,
-    verbose: bool | int | float,
+    verbose: bool | int | float = False,
 ):
     # problem, Path('~').expanduser() is ambigious
     # when there is a file named ~ in CWD
@@ -136,7 +136,7 @@ def gurantee_symlink(
     target: Path,
     link_name: Path,
     relative: bool,
-    verbose: bool | int | float,
+    verbose: bool | int | float = False,
 ):
     # todo advisorylock
     if relative:
@@ -152,9 +152,8 @@ def calculate_relative_symlink_dest(
     *,
     target: Path,
     link_name: Path,
-    verbose: bool | int | float,
+    verbose: bool | int | float = False,
 ):
-
     # todo eval https://docs.python.org/3/library/os.path.html#os.path.commonpath
     if isinstance(target, str):
         target = bytes(target, encoding="UTF8")
@@ -252,9 +251,8 @@ def create_relative_symlink(
     *,
     target: Path,
     link_name: Path,
-    verbose: bool | int | float,
+    verbose: bool | int | float = False,
 ):
-
     relative_target = calculate_relative_symlink_dest(
         target=target,
         link_name=link_name,
@@ -345,7 +343,7 @@ def symlink_or_exit(
     target: Path,
     link_name: Path,
     confirm: bool = False,
-    verbose: bool | int | float,
+    verbose: bool | int | float = False,
 ):
     if verbose:
         ic(target, link_name)
@@ -367,7 +365,7 @@ def symlink_or_exit(
 def mkdir_or_exit(
     folder: Path,
     confirm: bool,
-    verbose: bool | int | float,
+    verbose: bool | int | float = False,
     user: None | str = None,
 ):
     if verbose:
@@ -390,7 +388,7 @@ def comment_out_line_in_file(
     *,
     path,
     line: str,
-    verbose: bool | int | float,
+    verbose: bool | int | float = False,
     startswith: bool = False,
 ):
     """
@@ -431,7 +429,7 @@ def uncomment_line_in_file(
     *,
     path: Path,
     line: str,
-    verbose: bool | int | float,
+    verbose: bool | int | float = False,
 ):
     """
     remove # from the beginning of all instances of line_to_match
@@ -480,7 +478,7 @@ def write_line_to_file(
     *,
     line: str | bytes,
     path: Path,
-    verbose: bool | int | float,
+    verbose: bool | int | float = False,
     unique: bool = False,
     make_new_if_necessary: bool = True,
     unlink_first: bool = False,
@@ -538,7 +536,7 @@ def line_exists_in_file(
     *,
     line: str | bytes,
     file_to_check,
-    verbose: bool | int | float,
+    verbose: bool | int | float = False,
 ):
     if isinstance(line, str):
         line = line.encode("UTF8")
@@ -732,7 +730,7 @@ def combine_files(source: Path, destination: Path, buffer: int = 65535):
 # https://stackoverflow.com/questions/1430446/create-a-temporary-fifo-named-pipe-in-python
 @contextmanager
 def temp_fifo(
-    verbose: bool | int | float,
+    verbose: bool | int | float = False,
 ):
     """Context Manager for creating named pipes with temporary names."""
     tmpdir = tempfile.mkdtemp()
@@ -750,7 +748,7 @@ def temp_fifo(
 def get_free_space_at_path(
     *,
     path: Path,
-    verbose: bool | int | float,
+    verbose: bool | int | float = False,
 ):
     assert isinstance(path, Path)
     free_bytes = os.statvfs(path).f_ffree
@@ -763,7 +761,7 @@ def get_free_space_at_path(
 def get_path_with_most_free_space(
     *,
     pathlist: list[Path],
-    verbose: bool | int | float,
+    verbose: bool | int | float = False,
 ):
     ic(pathlist)
     assert isinstance(pathlist, (list, tuple))
@@ -792,7 +790,7 @@ def longest_prefix(iter0, iter1):
     Returns the longest common prefix of the given two iterables.
     """
     _longest_prefix = []
-    for (elmt0, elmt1) in zip(iter0, iter1):
+    for elmt0, elmt1 in zip(iter0, iter1):
         if elmt0 != elmt1:
             break
         _longest_prefix.append(elmt0)
@@ -805,9 +803,8 @@ def paths_are_identical(
     *,
     time: bool = False,
     perms: bool = False,
-    verbose: bool | int | float,
+    verbose: bool | int | float = False,
 ):
-
     assert isinstance(path1, Path)
     assert isinstance(path2, Path)
     if time or perms:
