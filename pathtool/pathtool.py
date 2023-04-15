@@ -288,9 +288,8 @@ def readlinkf(path):  # ugly
     readlink_output, errors = p.communicate()
     readlink_output_clean = readlink_output.strip()
     if errors:
-        ic(errors)
-    else:
-        return readlink_output_clean
+        raise ValueError(errors)
+    return readlink_output_clean
 
 
 def get_abs_path_of_first_symlink_target(path):
