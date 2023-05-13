@@ -490,10 +490,10 @@ def write_line_to_file(
 
     if isinstance(line, str):
         line = line.encode("UTF8")
-        ic(line)
     assert isinstance(line, bytes)
     assert line.count(b"\n") == 1
     assert line.endswith(b"\n")
+    ic(line, path)
 
     if unlink_first:
         assert not unique
