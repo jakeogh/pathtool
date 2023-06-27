@@ -148,6 +148,30 @@ def gurantee_symlink(
         assert Path(link_name).resolve().as_posix() == Path(target).as_posix()
 
 
+def symlink_or_exit(
+    *,
+    target: Path,
+    link_name: Path,
+    confirm: bool = False,
+    verbose: bool | int | float = False,
+):
+    if verbose:
+        ic(target, link_name)
+
+    if confirm:
+        input(f"press enter to os.symlink({target}, {link_name})")
+
+    if link_name.resolve() == target.resolve():
+        raise SelfSymlinkError(target, link_name)
+
+    try:
+        os.symlink(target, link_name)
+    except Exception as e:
+        eprint("Got Exception: %s", e)
+        eprint(f"Unable to symlink link_name: {link_name} to target: {target} Exiting.")
+        raise e
+
+
 def calculate_relative_symlink_dest(
     *,
     target: Path,
@@ -335,30 +359,6 @@ def is_unbroken_symlink(path):
     if os.path.islink(path):  # path is a symlink
         return os.path.exists(path)  # returns False for broken symlinks
     return False  # path isnt a symlink
-
-
-def symlink_or_exit(
-    *,
-    target: Path,
-    link_name: Path,
-    confirm: bool = False,
-    verbose: bool | int | float = False,
-):
-    if verbose:
-        ic(target, link_name)
-
-    if confirm:
-        input(f"press enter to os.symlink({target}, {link_name})")
-
-    if link_name.resolve() == target.resolve():
-        raise SelfSymlinkError(target, link_name)
-
-    try:
-        os.symlink(target, link_name)
-    except Exception as e:
-        eprint("Got Exception: %s", e)
-        eprint(f"Unable to symlink link_name: {link_name} to target: {target} Exiting.")
-        raise e
 
 
 def mkdir_or_exit(
