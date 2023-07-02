@@ -553,7 +553,10 @@ def backup_file_if_exists(file_to_backup):
         pass  # skip backup if file does not exist
 
 
-def read_file_bytes(path, verbose: bool | int | float):
+def read_file_bytes(
+    path,
+    verbose: bool | int | float = False,
+):
     with open(path, "rb") as fh:
         file_bytes = fh.read()
     return file_bytes
@@ -574,7 +577,10 @@ def get_file_size(filename):
     return size
 
 
-def largest_file(files: Sequence[Path], verbose: bool | int | float):
+def largest_file(
+    files: Sequence[Path],
+    verbose: bool | int | float = False,
+):
     largest_file = None
     largest_file_size = None
     for file in files:
