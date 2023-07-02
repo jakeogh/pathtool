@@ -30,14 +30,13 @@ import tempfile
 import time
 from collections.abc import Sequence
 from contextlib import contextmanager
-from math import inf
 from pathlib import Path
 from shutil import copyfileobj
 
-# import magic  # sys-apps/file  #PIA
 from asserttool import ic
 from epprint import epprint
 from eprint import eprint
+from globalverbose import gvd
 from hashtool import sha3_256_hash_file
 from psutil import disk_usage
 from retry_on_exception import retry_on_exception
@@ -94,13 +93,11 @@ def path_is_dir(path):
 def target_generator(
     target_list,
     min_free_space: int,
-    verbose: bool = True,
+    verbose: bool | int | float = False,
 ):
-    if verbose:
-        ic(min_free_space)
+    ic(min_free_space)
     for target in target_list:
-        if verbose:
-            ic(target)
+        ic(target)
         if path_exists(target):
             assert path_is_dir(target)
             free_space = disk_usage(target).free
@@ -155,8 +152,7 @@ def symlink_or_exit(
     confirm: bool = False,
     verbose: bool | int | float = False,
 ):
-    if verbose:
-        ic(target, link_name)
+    ic(target, link_name)
 
     if confirm:
         input(f"press enter to os.symlink({target}, {link_name})")
@@ -280,7 +276,6 @@ def create_relative_symlink(
     relative_target = calculate_relative_symlink_dest(
         target=target,
         link_name=link_name,
-        verbose=verbose,
     )
     link_name_realpath = os.path.realpath(link_name)
     os.symlink(relative_target, link_name_realpath)
@@ -367,8 +362,7 @@ def mkdir_or_exit(
     verbose: bool | int | float = False,
     user: None | str = None,
 ):
-    if verbose:
-        ic(folder)
+    ic(folder)
     if confirm:
         input(f"press enter to os.makedirs({folder.as_posix()})")
     try:
@@ -634,7 +628,11 @@ class UnableToSetImmutableError(ValueError):
 #    current_flags = _path.lstat()
 
 
-def make_file_not_immutable(path: Path, *, verbose: bool | int | float):
+def make_file_not_immutable(
+    path: Path,
+    *,
+    verbose: bool | int | float = False,
+):
     if path.exists():
         command = "sudo /usr/bin/chattr -i " + path.as_posix()
         ic(command)
@@ -650,7 +648,7 @@ def make_file_not_immutable(path: Path, *, verbose: bool | int | float):
         raise FileNotFoundError
 
 
-def make_file_immutable(path: Path, *, verbose: bool | int | float):
+def make_file_immutable(path: Path, *, verbose: bool | int | float = False):
     command = "sudo /usr/bin/chattr +i " + path.as_posix()
     os.system(command)
     result_command = "/usr/bin/lsattr " + path.as_posix()
@@ -661,17 +659,19 @@ def make_file_immutable(path: Path, *, verbose: bool | int | float):
 
 
 def delete_file_and_recreate_empty_immutable(
-    path: str | Path, *, verbose: bool | int | float = False
+    path: str | Path,
+    *,
+    verbose: bool | int | float = False,
 ):
     path = Path(path)
     try:
-        make_file_not_immutable(path, verbose=verbose)
+        make_file_not_immutable(path)
     except FileNotFoundError:
         pass
     else:
         path.unlink()
     path.touch()
-    make_file_immutable(path=path, verbose=verbose)
+    make_file_immutable(path=path)
 
 
 def rename_or_exit(src, dest):
@@ -734,8 +734,7 @@ def temp_fifo(
     """Context Manager for creating named pipes with temporary names."""
     tmpdir = tempfile.mkdtemp()
     filename = os.path.join(tmpdir, "fifo")  # Temporary filename
-    if verbose:
-        ic(filename)
+    ic(filename)
     os.mkfifo(filename)  # Create FIFO
     try:
         yield filename
@@ -751,8 +750,7 @@ def get_free_space_at_path(
 ):
     assert isinstance(path, Path)
     free_bytes = os.statvfs(path).f_ffree
-    if verbose:
-        ic(path, free_bytes)
+    ic(path, free_bytes)
     assert isinstance(free_bytes, int)
     return free_bytes
 
@@ -768,7 +766,6 @@ def get_path_with_most_free_space(
     for path in pathlist:
         free_bytes: int = get_free_space_at_path(
             path=path,
-            verbose=verbose,
         )
         ic(path, free_bytes)
         if not largest:
@@ -776,8 +773,6 @@ def get_path_with_most_free_space(
             continue
         if free_bytes > largest[0]:
             largest = (free_bytes, path)
-    if verbose:
-        ic(largest)
     ic(largest)
     if largest:
         return Path(largest[1])
@@ -821,12 +816,11 @@ def paths_are_identical(
         return False
 
     if path1_type in [32768, 24576]:  # file or device
-        path1_hash = sha3_256_hash_file(path1, verbose=verbose)
+        path1_hash = sha3_256_hash_file(path1)
         path2_hash = sha3_256_hash_file(
             path2,
-            verbose=verbose,
         )
-        if verbose == inf:
+        if gvd:
             ic(path1_hash.hex())
             ic(path2_hash.hex())
 
@@ -838,9 +832,8 @@ def paths_are_identical(
     if path1_type == 40960:  # symlink
         path1_target = os.readlink(path1)
         path2_target = os.readlink(path2)
-        if verbose:
-            ic(path1_target)
-            ic(path2_target)
+        ic(path1_target)
+        ic(path2_target)
 
         if path1_target != path2_target:
             ic(path1, path1_target)
@@ -915,7 +908,11 @@ def chdir_or_exit(targetdir):
     return True
 
 
-def remove_empty_folders(path, remove_root=True, verbose=False):
+def remove_empty_folders(
+    path,
+    remove_root=True,
+    verbose: bool | int | float = False,
+):
     if not os.path.isdir(path):
         return
 
@@ -931,8 +928,7 @@ def remove_empty_folders(path, remove_root=True, verbose=False):
     # if folder empty, delete it
     files = os.listdir(path)
     if len(files) == 0 and remove_root:
-        if verbose:
-            epprint("removing empty folder:", path)
+        epprint("removing empty folder:", path)
         os.rmdir(path)
 
 
