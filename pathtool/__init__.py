@@ -30,4 +30,5 @@ from .pathtool import symlink_destination
 from .pathtool import symlink_or_exit
 from .pathtool import target_generator
 from .pathtool import uncomment_line_in_file
+from .pathtool import wait_for_block_special_device_to_exist
 from .pathtool import write_line_to_file
