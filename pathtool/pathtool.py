@@ -1,22 +1,27 @@
 #!/usr/bin/env python3
 # -*- coding: utf8 -*-
 
+# pylint: disable=useless-suppression             # [I0021]
 # pylint: disable=missing-docstring               # [C0111] docstrings are always outdated and wrong
-# pylint: disable=fixme                           # [W0511] todo is encouraged
+# pylint: disable=missing-param-doc               # [W9015]
+# pylint: disable=missing-module-docstring        # [C0114]
+# pylint: disable=fixme                           # [W0511] todo encouraged
 # pylint: disable=line-too-long                   # [C0301]
 # pylint: disable=too-many-instance-attributes    # [R0902]
 # pylint: disable=too-many-lines                  # [C0302] too many lines in module
-# pylint: disable=invalid-name                    # [C0103] single letter var names, name too descriptive
+# pylint: disable=invalid-name                    # [C0103] single letter var names, name too descriptive(!)
 # pylint: disable=too-many-return-statements      # [R0911]
 # pylint: disable=too-many-branches               # [R0912]
 # pylint: disable=too-many-statements             # [R0915]
 # pylint: disable=too-many-arguments              # [R0913]
 # pylint: disable=too-many-nested-blocks          # [R1702]
 # pylint: disable=too-many-locals                 # [R0914]
+# pylint: disable=too-many-public-methods         # [R0904]
 # pylint: disable=too-few-public-methods          # [R0903]
 # pylint: disable=no-member                       # [E1101] no member for base
 # pylint: disable=attribute-defined-outside-init  # [W0201]
 # pylint: disable=too-many-boolean-expressions    # [R0916] in if statement
+
 from __future__ import annotations
 
 import errno
@@ -46,17 +51,17 @@ class SelfSymlinkError(ValueError):
     pass
 
 
-def cli_path(
-    path: str,
-    verbose: bool | int | float = False,
-):
-    # problem, Path('~').expanduser() is ambigious
-    # when there is a file named ~ in CWD
-    # the obvious solution is to make the user specify
-    # Path('./~') which .expanduser().... uug... .expanduser()
-    # incorrectly resolves ./~ to /home/user.
-    # sooo... is there no way to specify the ~ file without an absolute path?
-    pass
+# def cli_path(
+#    path: str,
+#    verbose: bool = False,
+# ):
+#    # problem, Path('~').expanduser() is ambigious
+#    # when there is a file named ~ in CWD
+#    # the obvious solution is to make the user specify
+#    # Path('./~') which .expanduser().... uug... .expanduser()
+#    # incorrectly resolves ./~ to /home/user.
+#    # sooo... is there no way to specify the ~ file without an absolute path?
+#    pass
 
 
 def validate_slice(slice_syntax: str):
@@ -93,7 +98,7 @@ def path_is_dir(path):
 def target_generator(
     target_list,
     min_free_space: int,
-    verbose: bool | int | float = False,
+    verbose: bool = False,
 ):
     ic(min_free_space)
     for target in target_list:
@@ -133,7 +138,7 @@ def gurantee_symlink(
     target: Path,
     link_name: Path,
     relative: bool,
-    verbose: bool | int | float = False,
+    verbose: bool = False,
 ):
     # todo advisorylock
     if relative:
@@ -150,7 +155,7 @@ def symlink_or_exit(
     target: Path,
     link_name: Path,
     confirm: bool = False,
-    verbose: bool | int | float = False,
+    verbose: bool = False,
 ):
     ic(target, link_name)
 
@@ -172,7 +177,7 @@ def calculate_relative_symlink_dest(
     *,
     target: Path,
     link_name: Path,
-    verbose: bool | int | float = False,
+    verbose: bool = False,
 ):
     # todo eval https://docs.python.org/3/library/os.path.html#os.path.commonpath
     if isinstance(target, str):
@@ -271,7 +276,7 @@ def create_relative_symlink(
     *,
     target: Path,
     link_name: Path,
-    verbose: bool | int | float = False,
+    verbose: bool = False,
 ):
     relative_target = calculate_relative_symlink_dest(
         target=target,
@@ -359,7 +364,7 @@ def is_unbroken_symlink(path):
 def mkdir_or_exit(
     folder: Path,
     confirm: bool,
-    verbose: bool | int | float = False,
+    verbose: bool = False,
     user: None | str = None,
 ):
     ic(folder)
@@ -381,7 +386,7 @@ def comment_out_line_in_file(
     *,
     path,
     line: str,
-    verbose: bool | int | float = False,
+    verbose: bool = False,
     startswith: bool = False,
 ):
     """
@@ -422,7 +427,7 @@ def uncomment_line_in_file(
     *,
     path: Path,
     line: str,
-    verbose: bool | int | float = False,
+    verbose: bool = False,
 ):
     """
     remove # from the beginning of all instances of line_to_match
@@ -471,7 +476,7 @@ def write_line_to_file(
     *,
     line: str | bytes,
     path: Path,
-    verbose: bool | int | float = False,
+    verbose: bool = False,
     unique: bool = False,
     make_new_if_necessary: bool = True,
     unlink_first: bool = False,
@@ -529,7 +534,7 @@ def line_exists_in_file(
     *,
     line: str | bytes,
     file_to_check,
-    verbose: bool | int | float = False,
+    verbose: bool = False,
 ):
     if isinstance(line, str):
         line = line.encode("UTF8")
@@ -555,7 +560,7 @@ def backup_file_if_exists(file_to_backup):
 
 def read_file_bytes(
     path,
-    verbose: bool | int | float = False,
+    verbose: bool = False,
 ):
     with open(path, "rb") as fh:
         file_bytes = fh.read()
@@ -579,7 +584,7 @@ def get_file_size(filename):
 
 def largest_file(
     files: Sequence[Path],
-    verbose: bool | int | float = False,
+    verbose: bool = False,
 ):
     largest_file = None
     largest_file_size = None
@@ -637,7 +642,7 @@ class UnableToSetImmutableError(ValueError):
 def make_file_not_immutable(
     path: Path,
     *,
-    verbose: bool | int | float = False,
+    verbose: bool = False,
 ):
     if path.exists():
         command = "sudo /usr/bin/chattr -i " + path.as_posix()
@@ -667,7 +672,7 @@ def make_file_immutable(path: Path, *, verbose: bool | int | float = False):
 def delete_file_and_recreate_empty_immutable(
     path: str | Path,
     *,
-    verbose: bool | int | float = False,
+    verbose: bool = False,
 ):
     path = Path(path)
     try:
@@ -735,7 +740,7 @@ def combine_files(source: Path, destination: Path, buffer: int = 65535):
 # https://stackoverflow.com/questions/1430446/create-a-temporary-fifo-named-pipe-in-python
 @contextmanager
 def temp_fifo(
-    verbose: bool | int | float = False,
+    verbose: bool = False,
 ):
     """Context Manager for creating named pipes with temporary names."""
     tmpdir = tempfile.mkdtemp()
@@ -752,7 +757,7 @@ def temp_fifo(
 def get_free_space_at_path(
     *,
     path: Path,
-    verbose: bool | int | float = False,
+    verbose: bool = False,
 ):
     assert isinstance(path, Path)
     free_bytes = os.statvfs(path).f_ffree
@@ -764,7 +769,7 @@ def get_free_space_at_path(
 def get_path_with_most_free_space(
     *,
     pathlist: list[Path],
-    verbose: bool | int | float = False,
+    verbose: bool = False,
 ):
     ic(pathlist)
     assert isinstance(pathlist, (list, tuple))
@@ -803,7 +808,7 @@ def paths_are_identical(
     *,
     time: bool = False,
     perms: bool = False,
-    verbose: bool | int | float = False,
+    verbose: bool = False,
 ):
     assert isinstance(path1, Path)
     assert isinstance(path2, Path)
@@ -917,7 +922,7 @@ def chdir_or_exit(targetdir):
 def remove_empty_folders(
     path,
     remove_root=True,
-    verbose: bool | int | float = False,
+    verbose: bool = False,
 ):
     if not os.path.isdir(path):
         return
