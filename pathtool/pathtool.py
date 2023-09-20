@@ -64,6 +64,29 @@ class SelfSymlinkError(ValueError):
 #    pass
 
 
+def wait_for_block_special_device_to_exist(
+    *,
+    device: Path,
+    timeout: int = 5,
+):
+    device = Path(device)
+    eprint(f"waiting for block special device: {device.as_posix()} to exist")
+    start = time.time()
+    if path_exists(device):
+        assert path_is_block_special(device)
+        return True
+
+    while not path_exists(device):
+        time.sleep(0.1)
+        if time.time() - start > timeout:
+            raise TimeoutError(
+                f"timeout waiting for block special device: {device} to exist"
+            )
+        if path_is_block_special(device):
+            break
+    return True
+
+
 def validate_slice(slice_syntax: str):
     assert isinstance(slice_syntax, str)
     for c in slice_syntax:
