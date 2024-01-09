@@ -495,6 +495,10 @@ def uncomment_line_in_file(
     exception=OSError,
     errno=errno.ENOSPC,
 )
+@retry_on_exception(
+    exception=PermissionError,
+    errno=errno.EPERM,
+)
 def write_line_to_file(
     *,
     line: str | bytes,
