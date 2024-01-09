@@ -497,7 +497,7 @@ def uncomment_line_in_file(
 )
 @retry_on_exception(
     exception=PermissionError,
-    errno=errno.EPERM,
+    # errno=errno.EPERM,
 )
 @retry_on_exception(
     exception=Exception,
