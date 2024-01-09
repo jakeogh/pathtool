@@ -39,6 +39,7 @@ from pathlib import Path
 from shutil import copyfileobj
 
 from asserttool import ic
+from asserttool import icp
 from epprint import epprint
 from eprint import eprint
 from globalverbose import gvd
@@ -523,7 +524,13 @@ def write_line_to_file(
     assert isinstance(line, bytes)
     assert line.count(b"\n") == 1
     assert line.endswith(b"\n")
-    ic(line, path)
+    icp(
+        line,
+        path,
+        unique,
+        make_new_if_necessary,
+        unlink_first,
+    )
 
     if unlink_first:
         assert not unique
