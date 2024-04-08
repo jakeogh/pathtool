@@ -65,6 +65,14 @@ class SelfSymlinkError(ValueError):
 #    pass
 
 
+def wait_for_path_to_exist(path: Path):
+    eprint(f"waiting for path: {path.as_posix()} to exist")
+    while True:
+        if path.exists():
+            return
+        time.sleep(0.1)
+
+
 def wait_for_block_special_device_to_exist(
     *,
     device: Path,
