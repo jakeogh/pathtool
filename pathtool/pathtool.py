@@ -54,7 +54,6 @@ class SelfSymlinkError(ValueError):
 
 # def cli_path(
 #    path: str,
-#    verbose: bool = False,
 # ):
 #    # problem, Path('~').expanduser() is ambigious
 #    # when there is a file named ~ in CWD
@@ -130,7 +129,6 @@ def path_is_dir(path):
 def target_generator(
     target_list,
     min_free_space: int,
-    verbose: bool = False,
 ):
     ic(min_free_space)
     for target in target_list:
@@ -170,7 +168,6 @@ def gurantee_symlink(
     target: Path,
     link_name: Path,
     relative: bool,
-    verbose: bool = False,
 ):
     # todo advisorylock
     if relative:
@@ -187,7 +184,6 @@ def symlink_or_exit(
     target: Path,
     link_name: Path,
     confirm: bool = False,
-    verbose: bool = False,
 ):
     ic(target, link_name)
 
@@ -209,7 +205,6 @@ def calculate_relative_symlink_dest(
     *,
     target: Path,
     link_name: Path,
-    verbose: bool = False,
 ):
     # todo eval https://docs.python.org/3/library/os.path.html#os.path.commonpath
     if isinstance(target, str):
@@ -308,7 +303,6 @@ def create_relative_symlink(
     *,
     target: Path,
     link_name: Path,
-    verbose: bool = False,
 ):
     relative_target = calculate_relative_symlink_dest(
         target=target,
@@ -396,7 +390,6 @@ def is_unbroken_symlink(path):
 def mkdir_or_exit(
     folder: Path,
     confirm: bool,
-    verbose: bool = False,
     user: None | str = None,
 ):
     ic(folder)
@@ -418,7 +411,6 @@ def comment_out_line_in_file(
     *,
     path,
     line: str,
-    verbose: bool = False,
     startswith: bool = False,
 ):
     """
@@ -459,7 +451,6 @@ def uncomment_line_in_file(
     *,
     path: Path,
     line: str,
-    verbose: bool = False,
 ):
     """
     remove # from the beginning of all instances of line_to_match
@@ -510,13 +501,11 @@ def uncomment_line_in_file(
 # )
 # @retry_on_exception(
 #    exception=Exception,
-#    verbose=True,
 # )
 def write_line_to_file(
     *,
     line: str | bytes,
     path: Path,
-    verbose: bool = False,
     unique: bool = False,
     make_new_if_necessary: bool = True,
     unlink_first: bool = False,
@@ -580,7 +569,6 @@ def line_exists_in_file(
     *,
     line: str | bytes,
     file_to_check,
-    verbose: bool = False,
 ):
     if isinstance(line, str):
         line = line.encode("UTF8")
@@ -604,10 +592,7 @@ def backup_file_if_exists(file_to_backup):
         pass  # skip backup if file does not exist
 
 
-def read_file_bytes(
-    path,
-    verbose: bool = False,
-):
+def read_file_bytes(path):
     with open(path, "rb") as fh:
         file_bytes = fh.read()
     return file_bytes
@@ -628,10 +613,7 @@ def get_file_size(filename):
     return size
 
 
-def largest_file(
-    files: Sequence[Path],
-    verbose: bool = False,
-):
+def largest_file(files: Sequence[Path]):
     largest_file = None
     largest_file_size = None
     for file in files:
@@ -685,11 +667,7 @@ class UnableToSetImmutableError(ValueError):
 #    current_flags = _path.lstat()
 
 
-def make_file_not_immutable(
-    path: Path,
-    *,
-    verbose: bool = False,
-):
+def make_file_not_immutable(path: Path):
     if path.exists():
         command = "sudo /usr/bin/chattr -i " + path.as_posix()
         ic(command)
@@ -705,7 +683,7 @@ def make_file_not_immutable(
         raise FileNotFoundError
 
 
-def make_file_immutable(path: Path, *, verbose: bool | int | float = False):
+def make_file_immutable(path: Path):
     command = "sudo /usr/bin/chattr +i " + path.as_posix()
     os.system(command)
     result_command = "/usr/bin/lsattr " + path.as_posix()
@@ -715,11 +693,7 @@ def make_file_immutable(path: Path, *, verbose: bool | int | float = False):
         raise UnableToSetImmutableError(command)
 
 
-def delete_file_and_recreate_empty_immutable(
-    path: str | Path,
-    *,
-    verbose: bool = False,
-):
+def delete_file_and_recreate_empty_immutable(path: str | Path):
     path = Path(path)
     try:
         make_file_not_immutable(path)
@@ -785,9 +759,7 @@ def combine_files(source: Path, destination: Path, buffer: int = 65535):
 # https://github.com/twisted/twisted/blob/trunk/twisted/python/filepath.py
 # https://stackoverflow.com/questions/1430446/create-a-temporary-fifo-named-pipe-in-python
 @contextmanager
-def temp_fifo(
-    verbose: bool = False,
-):
+def temp_fifo():
     """Context Manager for creating named pipes with temporary names."""
     tmpdir = tempfile.mkdtemp()
     filename = os.path.join(tmpdir, "fifo")  # Temporary filename
@@ -800,11 +772,7 @@ def temp_fifo(
         os.rmdir(tmpdir)  # Remove directory
 
 
-def get_free_space_at_path(
-    *,
-    path: Path,
-    verbose: bool = False,
-):
+def get_free_space_at_path(path: Path):
     assert isinstance(path, Path)
     free_bytes = os.statvfs(path).f_ffree
     ic(path, free_bytes)
@@ -813,9 +781,7 @@ def get_free_space_at_path(
 
 
 def get_path_with_most_free_space(
-    *,
     pathlist: list[Path],
-    verbose: bool = False,
 ):
     ic(pathlist)
     assert isinstance(pathlist, (list, tuple))
@@ -854,7 +820,6 @@ def paths_are_identical(
     *,
     time: bool = False,
     perms: bool = False,
-    verbose: bool = False,
 ):
     assert isinstance(path1, Path)
     assert isinstance(path2, Path)
@@ -968,7 +933,6 @@ def chdir_or_exit(targetdir):
 def remove_empty_folders(
     path,
     remove_root=True,
-    verbose: bool = False,
 ):
     if not os.path.isdir(path):
         return
