@@ -839,9 +839,7 @@ def paths_are_identical(
 
     if path1_type in [32768, 24576]:  # file or device
         path1_hash = sha3_256_hash_file(path1)
-        path2_hash = sha3_256_hash_file(
-            path2,
-        )
+        path2_hash = sha3_256_hash_file(path2)
         if gvd:
             ic(path1_hash.hex())
             ic(path2_hash.hex())
