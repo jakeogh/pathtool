@@ -947,7 +947,8 @@ def remove_empty_folders(
     # if folder empty, delete it
     files = os.listdir(path)
     if len(files) == 0 and remove_root:
-        epprint("removing empty folder:", path)
+        if ic.enabled:
+            epprint("removing empty folder:", path)
         os.rmdir(path)
 
 
