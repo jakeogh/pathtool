@@ -1,3 +1,7 @@
+"""
+isort:skip_file
+"""
+
 # from .pathtool import is_unbroken_symlink_to_target
 from .pathtool import backup_file_if_exists
 from .pathtool import check_or_create_dir
