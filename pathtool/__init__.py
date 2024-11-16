@@ -25,6 +25,9 @@ from .pathtool import make_file_not_immutable as make_file_not_immutable
 from .pathtool import mkdir_or_exit as mkdir_or_exit
 from .pathtool import path_exists as path_exists
 from .pathtool import path_is_block_special as path_is_block_special
+from .pathtool import (
+    path_is_block_special_or_symlink_to_block_special as path_is_block_special_or_symlink_to_block_special,
+)
 from .pathtool import path_is_dir as path_is_dir
 from .pathtool import path_is_file as path_is_file
 from .pathtool import paths_are_identical as paths_are_identical
