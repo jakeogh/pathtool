@@ -81,7 +81,7 @@ def wait_for_block_special_device_to_exist(
     eprint(f"waiting for block special device: {device.as_posix()} to exist")
     start = time.time()
     if path_exists(device):
-        assert path_is_block_special(device)
+        assert path_is_block_special(device, symlink_ok=False)
         return True
 
     while not path_exists(device):
@@ -90,7 +90,7 @@ def wait_for_block_special_device_to_exist(
             raise TimeoutError(
                 f"timeout waiting for block special device: {device} to exist"
             )
-        if path_is_block_special(device):
+        if path_is_block_special(device, symlink_ok=False):
             break
     return True
 
@@ -879,10 +879,10 @@ def path_exists(path):
 def path_is_block_special(
     path: Path,
     *,
-    follow_symlinks: bool = False,
+    symlink_ok: bool,
 ):
     if path_exists(path):
-        mode = os.stat(path, follow_symlinks=follow_symlinks).st_mode
+        mode = os.stat(path, follow_symlinks=symlink_ok).st_mode
         if stat.S_ISBLK(mode):
             return True
     return False
@@ -891,7 +891,7 @@ def path_is_block_special(
 def path_is_block_special_or_symlink_to_block_special(
     path: Path,
 ):
-    return path_is_block_special(path, follow_symlinks=True)
+    return path_is_block_special(path, symlink_ok=True)
 
 
 def path_is_file(path: Path):
