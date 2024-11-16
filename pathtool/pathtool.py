@@ -878,6 +878,7 @@ def path_exists(path):
 
 def path_is_block_special(
     path: Path,
+    *,
     follow_symlinks: bool = False,
 ):
     if path_exists(path):
@@ -885,6 +886,12 @@ def path_is_block_special(
         if stat.S_ISBLK(mode):
             return True
     return False
+
+
+def path_is_block_special_or_symlink_to_block_special(
+    path: Path,
+):
+    return path_is_block_special(path, follow_symlinks=True)
 
 
 def path_is_file(path: Path):
