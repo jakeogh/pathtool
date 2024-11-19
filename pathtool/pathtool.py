@@ -24,7 +24,7 @@
 
 from __future__ import annotations
 
-import errno
+# import errno
 import fcntl
 import os
 import shutil
@@ -206,30 +206,33 @@ def calculate_relative_symlink_dest(
     target: Path,
     link_name: Path,
 ):
+    # todo, require Path
     # todo eval https://docs.python.org/3/library/os.path.html#os.path.commonpath
     if isinstance(target, str):
-        target = bytes(target, encoding="UTF8")
-    if isinstance(target, Path):
-        target = os.fsencode(target)
+        _target = bytes(target, encoding="UTF8")
+    else:
+        assert isinstance(target, Path)
+        _target = os.fsencode(target)
 
     if isinstance(link_name, str):
-        link_name = bytes(link_name, encoding="UTF8")
-    if isinstance(link_name, Path):
-        link_name = os.fsencode(link_name)
+        _link_name = bytes(link_name, encoding="UTF8")
+    else:
+        assert isinstance(link_name, Path)
+        _link_name = os.fsencode(link_name)
 
     # paths are bytes. this must work for all possible paths
-    assert isinstance(target, bytes)
-    assert isinstance(link_name, bytes)
+    assert isinstance(_target, bytes)
+    assert isinstance(_link_name, bytes)
     # ceprint("target:", target)
 
-    assert not target.startswith(b"../")
+    assert not _target.startswith(b"../")
     # got relative target, that's hard to deal with pass in a fully qualified path
     # if target is also an existing symlink, detect that and dont call realpath()
     # call something that gets the realpath but does not follow any links
 
-    if is_unbroken_symlink(target):
+    if is_unbroken_symlink(_target):
         # the target is also a symlink, dont resolve it, just get it's abspath
-        target_realpath = os.path.abspath(target)
+        target_realpath = os.path.abspath(_target)
         # still a problem, since this was not fully resolved, it may still have symlinks embedded in it
         # get the folder, resolve that since it's guranteed not to be a symlink
         target_realpath_folder = b"/".join(target_realpath.split(b"/")[:-1])
@@ -242,27 +245,27 @@ def calculate_relative_symlink_dest(
         )
         # uug. ok now.
 
-    elif path_exists(target):
+    elif path_exists(_target):
         # target is prob a file or dir, but could still be a broken symlink
-        target_realpath = os.path.realpath(target)
+        target_realpath = os.path.realpath(_target)
 
-    elif is_broken_symlink(link_name):
+    elif is_broken_symlink(_link_name):
         assert False
 
     else:  # idk
         assert False
 
-    if is_broken_symlink(link_name):
-        link_name_realpath = os.path.realpath(link_name)
+    if is_broken_symlink(_link_name):
+        link_name_realpath = os.path.realpath(_link_name)
         # ceprint("link_name_realpath:", link_name_realpath)
-    elif not path_exists(link_name):
-        link_name_realpath = os.path.realpath(link_name)
+    elif not path_exists(_link_name):
+        link_name_realpath = os.path.realpath(_link_name)
         # ceprint("link_name_realpath:", link_name_realpath)
 
     # if its a unbroken symlink, and this is being used to see if its the shortest dest
     # os.path.realpath() cant be called, because it resolves the existing link to the target
-    elif is_unbroken_symlink(link_name):
-        link_name_realpath = os.path.abspath(link_name)
+    elif is_unbroken_symlink(_link_name):
+        link_name_realpath = os.path.abspath(_link_name)
         # ceprint("link_name_realpath: (abspath)", link_name_realpath)
         # at this point, all is still not well.
         # link_name_realpath was actually constructed by abspath()
