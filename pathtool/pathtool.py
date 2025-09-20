@@ -1,30 +1,11 @@
 #!/usr/bin/env python3
 # -*- coding: utf8 -*-
 
-# pylint: disable=useless-suppression             # [I0021]
 # pylint: disable=missing-docstring               # [C0111] docstrings are always outdated and wrong
-# pylint: disable=missing-param-doc               # [W9015]
-# pylint: disable=missing-module-docstring        # [C0114]
-# pylint: disable=fixme                           # [W0511] todo encouraged
-# pylint: disable=line-too-long                   # [C0301]
-# pylint: disable=too-many-instance-attributes    # [R0902]
-# pylint: disable=too-many-lines                  # [C0302] too many lines in module
 # pylint: disable=invalid-name                    # [C0103] single letter var names, name too descriptive(!)
-# pylint: disable=too-many-return-statements      # [R0911]
-# pylint: disable=too-many-branches               # [R0912]
-# pylint: disable=too-many-statements             # [R0915]
-# pylint: disable=too-many-arguments              # [R0913]
-# pylint: disable=too-many-nested-blocks          # [R1702]
-# pylint: disable=too-many-locals                 # [R0914]
-# pylint: disable=too-many-public-methods         # [R0904]
-# pylint: disable=too-few-public-methods          # [R0903]
-# pylint: disable=no-member                       # [E1101] no member for base
-# pylint: disable=attribute-defined-outside-init  # [W0201]
-# pylint: disable=too-many-boolean-expressions    # [R0916] in if statement
 
 from __future__ import annotations
 
-# import errno
 import fcntl
 import os
 import shutil
@@ -39,29 +20,15 @@ from pathlib import Path
 from shutil import copyfileobj
 
 from asserttool import ic
-from asserttool import icp
 from epprint import epprint
 from eprint import eprint
 from globalverbose import gvd
 from hashtool import sha3_256_hash_file
 from psutil import disk_usage
-from retry_on_exception import retry_on_exception
 
 
 class SelfSymlinkError(ValueError):
     pass
-
-
-# def cli_path(
-#    path: str,
-# ):
-#    # problem, Path('~').expanduser() is ambigious
-#    # when there is a file named ~ in CWD
-#    # the obvious solution is to make the user specify
-#    # Path('./~') which .expanduser().... uug... .expanduser()
-#    # incorrectly resolves ./~ to /home/user.
-#    # sooo... is there no way to specify the ~ file without an absolute path?
-#    pass
 
 
 def wait_for_path_to_exist(path: Path):
@@ -95,27 +62,27 @@ def wait_for_block_special_device_to_exist(
     return True
 
 
-def validate_slice(slice_syntax: str):
-    assert isinstance(slice_syntax, str)
-    for c in slice_syntax:
-        if c not in [
-            "0",
-            "1",
-            "2",
-            "3",
-            "4",
-            "5",
-            "6",
-            "7",
-            "8",
-            "9",
-            "-",
-            "[",
-            "]",
-            ":",
-        ]:
-            raise ValueError(slice_syntax)
-    return slice_syntax
+# def validate_slice(slice_syntax: str):
+#    assert isinstance(slice_syntax, str)
+#    for c in slice_syntax:
+#        if c not in [
+#            "0",
+#            "1",
+#            "2",
+#            "3",
+#            "4",
+#            "5",
+#            "6",
+#            "7",
+#            "8",
+#            "9",
+#            "-",
+#            "[",
+#            "]",
+#            ":",
+#        ]:
+#            raise ValueError(slice_syntax)
+#    return slice_syntax
 
 
 def path_is_dir(path):
@@ -140,7 +107,12 @@ def target_generator(
             if disk_usage(target).free >= min_free_space:
                 yield target
             else:
-                epprint("skipped:", target, "<", min_free_space)
+                epprint(
+                    "skipped:",
+                    target,
+                    "<",
+                    min_free_space,
+                )
     raise FileNotFoundError
 
 
@@ -414,7 +386,6 @@ def comment_out_line_in_file(
     *,
     path,
     line: str,
-    startswith: bool = False,
 ):
     """
     add a # to the beginning of all instances of line_to_match
@@ -494,78 +465,78 @@ def uncomment_line_in_file(
     return False
 
 
-@retry_on_exception(
-    exception=PermissionError,
-    # errno=errno.EPERM,
-)
 # @retry_on_exception(
-#    exception=OSError,
-#    errno=errno.ENOSPC,
+#    exception=PermissionError,
+#    # errno=errno.EPERM,
 # )
-# @retry_on_exception(
-#    exception=Exception,
-# )
-def write_line_to_file(
-    *,
-    line: str | bytes,
-    path: Path,
-    unique: bool = False,
-    make_new_if_necessary: bool = True,
-    unlink_first: bool = False,
-) -> bool:
-    """
-    Write line to path
-    if unique_line == True, write line iff line not in path.
-    """
-    path = Path(path).expanduser()
-
-    if isinstance(line, str):
-        line = line.encode("UTF8")
-    assert isinstance(line, bytes)
-    assert line.count(b"\n") == 1
-    assert line.endswith(b"\n")
-    icp(
-        line,
-        path,
-        unique,
-        make_new_if_necessary,
-        unlink_first,
-    )
-
-    if unlink_first:
-        assert not unique
-        try:
-            os.unlink(path)
-        except FileNotFoundError:
-            pass  # race condition
-        with open(path, "xb") as fh:
-            if not unique:
-                fh.write(line)
-                return True
-
-            if line not in fh:
-                fh.write(line)
-                return True
-            return False
-    else:
-        try:
-            with open(path, "rb+") as fh:
-                if not unique:
-                    fh.write(line)
-                    return True
-
-                if line not in fh:
-                    fh.write(line)
-                    return True
-                return False
-
-        except FileNotFoundError as e:
-            if make_new_if_necessary:
-                with open(path, "xb") as fh:
-                    fh.write(line)
-                    return True
-            else:
-                raise e
+## @retry_on_exception(
+##    exception=OSError,
+##    errno=errno.ENOSPC,
+## )
+## @retry_on_exception(
+##    exception=Exception,
+## )
+# def write_line_to_file(
+#    *,
+#    line: str | bytes,
+#    path: Path,
+#    unique: bool = False,
+#    make_new_if_necessary: bool = True,
+#    unlink_first: bool = False,
+# ) -> bool:
+#    """
+#    Write line to path
+#    if unique_line == True, write line iff line not in path.
+#    """
+#    path = Path(path).expanduser()
+#
+#    if isinstance(line, str):
+#        line = line.encode("UTF8")
+#    assert isinstance(line, bytes)
+#    assert line.count(b"\n") == 1
+#    assert line.endswith(b"\n")
+#    icp(
+#        line,
+#        path,
+#        unique,
+#        make_new_if_necessary,
+#        unlink_first,
+#    )
+#
+#    if unlink_first:
+#        assert not unique
+#        try:
+#            os.unlink(path)
+#        except FileNotFoundError:
+#            pass  # race condition
+#        with open(path, "xb") as fh:
+#            if not unique:
+#                fh.write(line)
+#                return True
+#
+#            if line not in fh:
+#                fh.write(line)
+#                return True
+#            return False
+#    else:
+#        try:
+#            with open(path, "rb+") as fh:
+#                if not unique:
+#                    fh.write(line)
+#                    return True
+#
+#                if line not in fh:
+#                    fh.write(line)
+#                    return True
+#                return False
+#
+#        except FileNotFoundError as e:
+#            if make_new_if_necessary:
+#                with open(path, "xb") as fh:
+#                    fh.write(line)
+#                    return True
+#            else:
+#                raise e
 
 
 def line_exists_in_file(
@@ -742,7 +713,11 @@ def is_regular_file(path):
     return False
 
 
-def combine_files(source: Path, destination: Path, buffer: int = 65535):
+def combine_files(
+    source: Path,
+    destination: Path,
+    buffer: int = 65535,
+):
     assert is_regular_file(source)
     assert is_regular_file(destination)
     with open(source, "rb") as sfh:
