@@ -43,4 +43,4 @@ from .pathtool import (
     wait_for_block_special_device_to_exist as wait_for_block_special_device_to_exist,
 )
 from .pathtool import wait_for_path_to_exist as wait_for_path_to_exist
-from .pathtool import write_line_to_file as write_line_to_file
+#from .pathtool import write_line_to_file as write_line_to_file
