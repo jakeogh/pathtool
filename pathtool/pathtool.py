@@ -1,76 +1,127 @@
 #!/usr/bin/env python3
-# -*- coding: utf8 -*-
-
-# pylint: disable=missing-docstring               # [C0111] docstrings are always outdated and wrong
-# pylint: disable=invalid-name                    # [C0103] single letter var names, name too descriptive(!)
+"""Path manipulation utilities with modern Python features and comprehensive error handling."""
 
 from __future__ import annotations
 
+import logging
 import os
 import shutil
-import stat
 import subprocess
 import sys
 import tempfile
 import time
 from contextlib import contextmanager
 from pathlib import Path
+from typing import Iterator
+from typing import Union
 
-from epprint import epprint
+logger = logging.getLogger(__name__)
 
 
 class ForceRequiredError(Exception):
+    """Raised when a force flag is required for a dangerous operation."""
+
     pass
 
 
 class SelfSymlinkError(Exception):
+    """Raised when attempting to create a symlink that would point to itself."""
+
     def __init__(
         self,
-        target,
-        link_name,
-    ):
+        target: Path,
+        link_name: Path,
+    ) -> None:
         self.target = target
         self.link_name = link_name
+        super().__init__(
+            f"Cannot create self-referencing symlink: {link_name} -> {target}"
+        )
 
 
 class UnableToSetImmutableError(Exception):
+    """Raised when unable to set or unset the immutable flag on a file."""
+
     pass
 
 
-def path_is_file(path: Path):
-    # is_file returns False for symlinks to files
-    # path_is_file will return True for symlink to existing file
-    return path.exists() and stat.S_ISREG(os.lstat(path).st_mode)
+def path_is_file(path: Path) -> bool:
+    """Return True if path exists and is a regular file (including symlinks to files).
+
+    Args:
+        path: Path to check
+
+    Returns:
+        True if path exists and is a file or symlink to a file
+    """
+    return path.exists() and path.is_file()
 
 
-def path_is_dir(path: Path):
-    # is_dir returns False for symlinks to dirs
-    # path_is_dir will return True for symlink to existing dir
-    return path.exists() and stat.S_ISDIR(os.lstat(path).st_mode)
+def path_is_dir(path: Path) -> bool:
+    """Return True if path exists and is a directory (including symlinks to dirs).
+
+    Args:
+        path: Path to check
+
+    Returns:
+        True if path exists and is a directory or symlink to a directory
+    """
+    return path.exists() and path.is_dir()
 
 
-def path_is_symlink(path: Path):
-    return stat.S_ISLNK(os.lstat(path).st_mode)
+def path_is_symlink(path: Path) -> bool:
+    """Return True if path is a symbolic link.
+
+    Args:
+        path: Path to check
+
+    Returns:
+        True if path is a symbolic link, False otherwise
+    """
+    try:
+        return path.is_symlink()
+    except OSError:
+        return False
 
 
-def path_is_dir_or_symlink_to_dir(path: Path):
-    return path.is_dir() or (
-        path.is_symlink() and Path(os.path.realpath(path)).is_dir()
-    )
+def path_is_dir_or_symlink_to_dir(path: Path) -> bool:
+    """Return True if path is a directory or symlink pointing to a directory.
+
+    Args:
+        path: Path to check
+
+    Returns:
+        True if path is a directory or symlink to an existing directory
+    """
+    return path.is_dir() or (path.is_symlink() and path.resolve().is_dir())
 
 
-def path_is_file_or_symlink_to_file(path: Path):
-    return path.is_file() or (
-        path.is_symlink() and Path(os.path.realpath(path)).is_file()
-    )
+def path_is_file_or_symlink_to_file(path: Path) -> bool:
+    """Return True if path is a file or symlink pointing to a file.
+
+    Args:
+        path: Path to check
+
+    Returns:
+        True if path is a file or symlink to an existing file
+    """
+    return path.is_file() or (path.is_symlink() and path.resolve().is_file())
 
 
-def chdir_or_exit(path: Path):
+def chdir_or_exit(path: Path) -> None:
+    """Change directory or exit with error message.
+
+    Args:
+        path: Directory to change to
+    """
     try:
         os.chdir(path)
-    except Exception as e:
-        epprint("Got Exception: %s", e)
-        epprint("Unable to chdir to: %s Exiting.", path)
+    except OSError as e:
+        logger.error(
+            "Failed to change directory to %s: %s",
+            path,
+            e,
+        )
         sys.exit(1)
 
 
@@ -78,261 +129,389 @@ def mkdir_or_exit(
     folder: Path,
     confirm: bool = False,
     mode: int = 0o755,
-):
-    assert isinstance(folder, Path)
+) -> None:
+    """Create directory or exit with error message.
+
+    Args:
+        folder: Directory to create
+        confirm: If True, prompt user before creating
+        mode: File permissions for the directory
+
+    Raises:
+        ValueError: If folder exists but is not a directory
+    """
     if folder.exists():
         if not folder.is_dir():
-            raise ValueError(f"{folder} exists but is not a dir")
+            raise ValueError(f"{folder} exists but is not a directory")
         return
 
     if confirm:
-        input(f"press enter to os.mkdir({folder})")
+        input(f"Press enter to create directory: {folder}")
 
     try:
-        os.mkdir(folder, mode=mode)
-    except Exception as e:
-        epprint("Got Exception: %s", e)
-        epprint("Unable to mkdir: %s Exiting.", folder)
+        folder.mkdir(mode=mode, parents=False)
+    except OSError as e:
+        logger.error(
+            "Failed to create directory %s: %s",
+            folder,
+            e,
+        )
         sys.exit(1)
 
 
-def symlink(
+def create_symlink(
     *,
     target: Path,
     link_name: Path,
     confirm: bool = False,
-):
+) -> None:
+    """Create a symbolic link.
 
+    Args:
+        target: Path the symlink should point to
+        link_name: Path where the symlink should be created
+        confirm: If True, prompt user before creating
+
+    Raises:
+        SelfSymlinkError: If the symlink would point to itself
+    """
     if confirm:
-        input(f"press enter to os.symlink({target}, {link_name})")
+        input(f"Press enter to create symlink: {link_name} -> {target}")
 
     if link_name.resolve() == target.resolve():
         raise SelfSymlinkError(target, link_name)
 
     try:
-        os.symlink(target, link_name)
-    except Exception as e:
-        epprint(
-            f"error symlinking:\ntarget:    {target}\nlink_name: {link_name}\nerror: {e}"
+        link_name.symlink_to(target)
+    except OSError as e:
+        logger.error(
+            "Failed to create symlink %s -> %s: %s",
+            link_name,
+            target,
+            e,
         )
         sys.exit(1)
 
 
-def symlink_final_resolved_path(path: Path) -> Path:
-    if os.path.islink(path):
-        _path = Path(os.path.realpath(path))
-    else:
-        _path = path
-    return _path
+def resolve_symlink_final(path: Path) -> Path:
+    """Get the final resolved path, following all symlinks.
+
+    Args:
+        path: Path to resolve
+
+    Returns:
+        Final resolved path
+    """
+    return path.resolve()
 
 
-def get_abs_path_of_first_symlink_target(path):
-    link_target = os.readlink(path)
-    # assert link_target
-    link_dir = os.path.dirname(path)
-    link_first_target_abs = os.path.join(link_dir, link_target)
-    # ceprint(link_first_target_abs)
-    link_first_target_abs_normpath = os.path.normpath(link_first_target_abs)
-    # ceprint(link_first_target_abs_normpath)
-    link_first_target_abs_normpath_abspath = os.path.abspath(
-        link_first_target_abs_normpath
-    )
-    return link_first_target_abs_normpath_abspath
+def get_symlink_target(path: Path) -> str:
+    """Get the immediate target of a symlink.
+
+    Args:
+        path: Symlink path
+
+    Returns:
+        Target path as string
+
+    Raises:
+        ValueError: If path is not a symlink
+    """
+    if not path.is_symlink():
+        raise ValueError(f"{path} is not a symlink")
+
+    return os.readlink(path)
 
 
-def get_symlink_target_next(path):
-    assert os.path.islink(path)
-    target = os.readlink(path)
-    return target
+def is_broken_symlink(path: Path) -> bool:
+    """Check if path is a broken symbolic link.
+
+    Args:
+        path: Path to check
+
+    Returns:
+        True if path is a symlink pointing to a non-existent target
+    """
+    return path.is_symlink() and not path.exists()
 
 
-def get_symlink_target_final(path):  # broken for bytes
-    if os.path.islink(path):
-        target = os.readlink(path)
-        target_joined = os.path.join(os.path.dirname(path), target)
-        target_file = readlinkf(target_joined).decode("UTF-8")
-    else:
-        target_file = readlinkf(path).decode("UTF-8")
-    return target_file
+def is_valid_symlink(path: Path) -> bool:
+    """Check if path is a valid (unbroken) symbolic link.
+
+    Args:
+        path: Path to check
+
+    Returns:
+        True if path is a symlink pointing to an existing target
+    """
+    return path.is_symlink() and path.exists()
 
 
-def readlinkf(path):  # portable replacement for `readlink -f`
-    # Use pathlib to resolve as much as possible without requiring the target to exist.
-    p = Path(path)
-    resolved = p.resolve(strict=False)
-    # Maintain bytes return type for backward compatibility with callers that decode.
-    return os.fsencode(str(resolved))
-
-
-def is_broken_symlink(path):
-    if os.path.islink(path):  # path is a symlink
-        return not os.path.exists(path)  # returns False for broken symlinks
-    return False  # path isnt a symlink
-
-
-def is_unbroken_symlink(path):
-    if os.path.islink(path):  # path is a symlink
-        return os.path.exists(path)  # returns False for broken symlinks
-    return False  # path isnt a symlink
-
-
-def calculate_relative_symlink_dest(
+def calculate_relative_symlink_target(
     *,
     target: Path,
     link_name: Path,
 ) -> str:
-    # Standardize on Path inputs
+    """Calculate relative path for creating a symlink.
+
+    Args:
+        target: Absolute path to the target
+        link_name: Absolute path where the symlink will be created
+
+    Returns:
+        Relative path string from link location to target
+
+    Raises:
+        FileNotFoundError: If target doesn't exist
+    """
     target = Path(target)
     link_name = Path(link_name)
-    # Require target to exist to preserve previous behavior (no broken symlinks)
+
+    # Require target to exist
     target_resolved = target.resolve(strict=True)
     link_dir = link_name.parent.resolve(strict=True)
-    # Relative path from link's directory to target
-    rel = os.path.relpath(target_resolved, start=link_dir)
-    return rel
+
+    return os.path.relpath(target_resolved, start=link_dir)
 
 
 def create_relative_symlink(
     *,
     target: Path,
     link_name: Path,
-):
-    # Compute a stable relative target and create the link atomically when possible.
-    rel = calculate_relative_symlink_dest(target=target, link_name=link_name)
-    link_path = Path(link_name)
-    link_path.unlink(missing_ok=True)
-    link_path.symlink_to(rel)
+) -> None:
+    """Create a relative symbolic link.
 
-
-def symlink_destination(link):  # broken for multi level symlinks
-    return os.path.realpath(link)
-
-
-def make_file_immutable(path: Path):
-    # Do not escalate privileges here; caller should have permission.
-    result = subprocess.run(
-        ["/usr/bin/chattr", "+i", path.as_posix()],
-        capture_output=True,
-        text=True,
+    Args:
+        target: Path the symlink should point to
+        link_name: Path where the symlink should be created
+    """
+    relative_target = calculate_relative_symlink_target(
+        target=target, link_name=link_name
     )
-    if result.returncode != 0:
-        raise UnableToSetImmutableError(result.stderr or result.stdout)
-    check = subprocess.run(
-        ["/usr/bin/lsattr", "--", path.as_posix()],
-        capture_output=True,
-        text=True,
-    )
-    # Parse flags from the first whitespace-separated field
-    flags = check.stdout.split()[0] if check.stdout else ""
-    if "i" not in flags:
-        epprint(f"make_file_immutable({path.as_posix()}) failed")
-        raise UnableToSetImmutableError(check.stdout or check.stderr)
+    link_name.unlink(missing_ok=True)
+    link_name.symlink_to(relative_target)
 
 
-def delete_file_and_recreate_empty_immutable(path: str | Path):
+def _is_file_immutable(path: Path) -> bool:
+    """Check if file has the immutable flag set.
+
+    Args:
+        path: File path to check
+
+    Returns:
+        True if file has immutable flag set
+    """
+    if not shutil.which("lsattr"):
+        return False
+
+    try:
+        result = subprocess.run(
+            ["lsattr", str(path)],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+        flags = result.stdout.split()[0] if result.stdout else ""
+        return "i" in flags
+    except subprocess.CalledProcessError:
+        return False
+
+
+def make_file_immutable(path: Path) -> None:
+    """Make file immutable using chattr +i.
+
+    Args:
+        path: File to make immutable
+
+    Raises:
+        UnableToSetImmutableError: If operation fails
+    """
+    if not shutil.which("chattr"):
+        raise UnableToSetImmutableError("chattr command not found")
+
+    try:
+        subprocess.run(
+            ["chattr", "+i", str(path)],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+    except subprocess.CalledProcessError as e:
+        raise UnableToSetImmutableError(f"Failed to set immutable: {e.stderr}")
+
+    # Verify the operation succeeded
+    if not _is_file_immutable(path):
+        raise UnableToSetImmutableError("File immutable flag not set after operation")
+
+
+def make_file_not_immutable(path: Path) -> None:
+    """Remove immutable flag from file using chattr -i.
+
+    Args:
+        path: File to make mutable
+
+    Raises:
+        FileNotFoundError: If file doesn't exist
+        UnableToSetImmutableError: If operation fails
+    """
+    if not path.exists():
+        raise FileNotFoundError(f"File not found: {path}")
+
+    if not shutil.which("chattr"):
+        raise UnableToSetImmutableError("chattr command not found")
+
+    try:
+        subprocess.run(
+            ["chattr", "-i", str(path)],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+    except subprocess.CalledProcessError as e:
+        raise UnableToSetImmutableError(f"Failed to remove immutable: {e.stderr}")
+
+    # Verify the operation succeeded
+    if _is_file_immutable(path):
+        raise UnableToSetImmutableError("File immutable flag still set after operation")
+
+
+def delete_file_and_recreate_empty_immutable(path: Union[str, Path]) -> None:
+    """Delete file and recreate as empty immutable file.
+
+    Args:
+        path: File path to recreate
+    """
     path = Path(path)
+
     try:
         make_file_not_immutable(path)
+        path.unlink()
     except FileNotFoundError:
         pass
-    else:
-        path.unlink()
+
     path.touch()
-    make_file_immutable(path=path)
+    make_file_immutable(path)
 
 
-def make_file_not_immutable(path: Path):
-    if path.exists():
-        # Do not use sudo; assume caller has rights.
-        result = subprocess.run(
-            ["/usr/bin/chattr", "-i", path.as_posix()],
-            capture_output=True,
-            text=True,
-        )
-        if result.returncode != 0:
-            raise UnableToSetImmutableError(result.stderr or result.stdout)
-        check = subprocess.run(
-            ["/usr/bin/lsattr", "--", path.as_posix()],
-            capture_output=True,
-            text=True,
-        )
-        flags = check.stdout.split()[0] if check.stdout else ""
-        if "i" in flags:
-            epprint(f"make_file_not_immutable({path.as_posix()}) failed")
-            raise UnableToSetImmutableError(check.stdout or check.stderr)
-    else:
-        raise FileNotFoundError
+def get_free_space(path: Path) -> int:
+    """Get available free space at the given path in bytes.
+
+    Args:
+        path: Path to check free space for
+
+    Returns:
+        Available free space in bytes
+    """
+    path = Path(path)
+    stat_result = os.statvfs(path)
+    return stat_result.f_bavail * stat_result.f_frsize
 
 
-def get_disk_free_bytes(path: Path) -> int:
-    s = os.statvfs(path.as_posix())
-    return s.f_frsize * s.f_bavail
-
-
-# https://stackoverflow.com/questions/1430446/create-a-temporary-fifo-named-pipe-in-python
 @contextmanager
-def temp_fifo():
-    """Context Manager for creating named pipes with temporary names."""
+def temp_fifo() -> Iterator[str]:
+    """Context manager for creating temporary named pipes.
+
+    Yields:
+        Path to the temporary FIFO
+    """
     tmpdir = tempfile.mkdtemp()
-    filename = os.path.join(tmpdir, "fifo")  # Temporary filename
-    os.mkfifo(filename)  # Create FIFO
+    filename = os.path.join(tmpdir, "fifo")
+
     try:
+        os.mkfifo(filename)
         yield filename
     finally:
-        os.unlink(filename)  # Remove file
-        os.rmdir(tmpdir)  # Remove directory
+        try:
+            os.unlink(filename)
+        except OSError:
+            pass
+        try:
+            os.rmdir(tmpdir)
+        except OSError:
+            pass
 
 
-def get_free_space_at_path(path: Path):
-    assert isinstance(path, Path)
-    st = os.statvfs(path)
-    # Free bytes available to unprivileged processes
-    free_bytes = st.f_bavail * st.f_frsize
-    assert isinstance(free_bytes, int)
-    return free_bytes
+def get_path_with_most_free_space(pathlist: list[Path]) -> Path:
+    """Return the path with the most available free space.
 
+    Args:
+        pathlist: List of Path objects to check
 
-def get_path_with_most_free_space(
-    pathlist: list[Path],
-):
-    assert isinstance(pathlist, (list, tuple))
-    largest: None | tuple[int, Path] = None
+    Returns:
+        Path object with the most free space
+
+    Raises:
+        ValueError: If pathlist is empty or no valid paths found
+    """
+    if not pathlist:
+        raise ValueError("pathlist cannot be empty")
+
+    max_free_space = -1
+    best_path = None
+
     for path in pathlist:
-        free_bytes: int = get_free_space_at_path(
-            path=path,
-        )
-        if largest is None:
-            largest = (free_bytes, path)
+        try:
+            free_bytes = get_free_space(path)
+            if free_bytes > max_free_space:
+                max_free_space = free_bytes
+                best_path = path
+        except OSError as e:
+            logger.warning(
+                "Cannot access path %s: %s",
+                path,
+                e,
+            )
             continue
-        if free_bytes > largest[0]:
-            largest = (free_bytes, path)
 
-    if largest:
-        return Path(largest[1])
-    raise ValueError
+    if best_path is None:
+        raise ValueError("No accessible paths found")
+
+    return best_path
 
 
-def longest_prefix(iter0, iter1):
+def longest_common_prefix(iter1: list, iter2: list) -> list:
+    """Return the longest common prefix of two iterables.
+
+    Args:
+        iter1: First iterable
+        iter2: Second iterable
+
+    Returns:
+        List containing the longest common prefix elements
     """
-    Returns the longest common prefix of the given two iterables.
-    """
-    _longest_prefix = []
-    for elmt0, elmt1 in zip(iter0, iter1):
-        if elmt0 != elmt1:
+    common_prefix = []
+    for element1, element2 in zip(iter1, iter2):
+        if element1 != element2:
             break
-        _longest_prefix.append(elmt0)
-    return _longest_prefix
+        common_prefix.append(element1)
+    return common_prefix
 
 
-def __is_disk_device(d: str):
-    # quick and dirty
-    assert d.count("/") < 2
-    d = d.replace("/dev/", "")
-    assert "/" not in d
-    assert d.isalnum()
-    assert d.lower() == d  # disallow uppercase
-    disknames = [
+def is_disk_device(device_name: str) -> bool:
+    """Check if the given name represents a valid disk device.
+
+    Args:
+        device_name: Device name (e.g., 'sda', 'nvme0n1')
+
+    Returns:
+        True if device_name is a recognized disk device
+    """
+    # Remove leading /dev/ if present
+    device_name = device_name.replace("/dev/", "")
+
+    # Basic validation
+    if (
+        "/" in device_name
+        or not device_name.isalnum()
+        or device_name != device_name.lower()
+    ):
+        return False
+
+    # Known disk device patterns
+    recognized_devices = {
         "mmcblk0",
+        "mmcblk1",
+        "mmcblk2",
         "sda",
         "sdb",
         "sdc",
@@ -345,117 +524,141 @@ def __is_disk_device(d: str):
         "nvme0n1",
         "nvme1n1",
         "nvme2n1",
-    ]
-    return d in disknames
-
-
-def get_avail_for_user(path: Path) -> int:
-    assert isinstance(path, Path)
-    # The number of free blocks available to a non-super user:
-    DISKFREE = shutil.disk_usage(path.as_posix())
-    # t = os.statvfs(path.as_posix())
-    # return t.f_bavail * t.f_bsize
-    return DISKFREE.free
-
-
-def get_pretty_bytes_string(byte_count: int) -> str:
-    assert isinstance(byte_count, int)
-    suffixes = {
-        0: "B",
-        1: "KiB",
-        2: "MiB",
-        3: "GiB",
-        4: "TiB",
-        5: "PiB",
-        6: "EiB",
-        7: "ZiB",
-        8: "YiB",
+        "nvme3n1",
     }
 
-    i = 0
-    while byte_count > 1024**i and i in suffixes:
-        i += 1
-    i -= 1
-    assert i in suffixes
-    rv = ("%.3f" % (byte_count / (1024**i))) + " " + suffixes[i]
-    return rv
+    return device_name in recognized_devices
 
 
-def touch_file_notify(
-    fpath,
-    args="r",
-    timeout=1,
-):
-    assert args in {
-        "r",
-        "w",
-        "x",
-    }  # r: read, w: write, x: exclusive
-    assert os.path.isabs(fpath)
+def format_bytes(byte_count: int) -> str:
+    """Format byte count as human-readable string with binary prefixes.
+
+    Args:
+        byte_count: Number of bytes
+
+    Returns:
+        Formatted string (e.g., "1.50 GiB")
+    """
+    if byte_count < 0:
+        return f"-{format_bytes(-byte_count)}"
+
+    suffixes = ["B", "KiB", "MiB", "GiB", "TiB", "PiB", "EiB", "ZiB", "YiB"]
+
+    if byte_count == 0:
+        return "0 B"
+
+    for i, suffix in enumerate(suffixes):
+        if byte_count < 1024 ** (i + 1) or i == len(suffixes) - 1:
+            if i == 0:
+                return f"{byte_count} {suffix}"
+            else:
+                value = byte_count / (1024**i)
+                return f"{value:.2f} {suffix}"
+
+    # This should never be reached
+    return f"{byte_count} B"
+
+
+def create_file_with_exclusive_access(
+    file_path: Path,
+    mode: str = "r",
+    timeout: float = 1.0,
+) -> None:
+    """Create file with specified access mode, waiting if necessary.
+
+    Args:
+        file_path: Absolute path to the file
+        mode: Access mode - 'r' (read), 'w' (write), 'x' (exclusive)
+        timeout: Time to wait between attempts for exclusive access
+
+    Raises:
+        ValueError: If mode is invalid or path is not absolute
+    """
+    if mode not in {"r", "w", "x"}:
+        raise ValueError(f"Invalid mode: {mode}. Must be 'r', 'w', or 'x'")
+
+    if not file_path.is_absolute():
+        raise ValueError(f"Path must be absolute: {file_path}")
+
+    flags = os.O_CREAT
+
+    if mode == "r":
+        file_flags = 0
+    elif mode == "w":
+        file_flags = os.O_TRUNC
+    elif mode == "x":
+        file_flags = os.O_EXCL
 
     while True:
-        flags = os.O_CREAT
-
-        if args == "r":
-            fflags = 0
-        elif args == "w":
-            fflags = os.O_TRUNC
-        elif args == "x":
-            fflags = os.O_EXCL
-        else:
-            assert False
-
         try:
-            fd = os.open(fpath, fflags | flags)
+            fd = os.open(file_path, file_flags | flags)
+            os.close(fd)
             break
-        except Exception as e:
-            if e.errno == 17:
-                # file exists
-                if args == "x":
-                    time.sleep(timeout)
-                else:
-                    break
+        except FileExistsError:
+            if mode == "x":
+                time.sleep(timeout)
+            else:
+                break
+        except OSError as e:
+            logger.error(
+                "Failed to create file %s: %s",
+                file_path,
+                e,
+            )
+            raise
 
-    os.close(fd)
 
-
-def dir_walk(
+def walk_directory(
     path: Path,
-    function,
-    remove_root: bool,
-    include_root: bool,
-):
-    assert isinstance(path, Path)
-    if not path.exists():
+    callback: callable,
+    remove_empty_root: bool = False,
+    include_root: bool = False,
+) -> None:
+    """Walk directory tree and apply callback to each file/directory.
+
+    Args:
+        path: Root directory to walk
+        callback: Function to call for each path
+        remove_empty_root: Remove root directory if empty after processing
+        include_root: Include root directory in processing
+    """
+    if not path.exists() or not path.is_dir():
         return
 
-    assert path.is_dir()
-
     if include_root:
-        function(path)
-    files = None
-    for root, dirs, files in os.walk(
-        path,
-        topdown=False,
-    ):
-        _root = Path(root)
-        for name in files:
-            file = _root / Path(name)
-            function(file)
-        for name in dirs:
-            dir_ = _root / Path(name)
-            function(dir_)
+        callback(path)
 
-    if files is not None:
-        if len(files) == 0 and remove_root:
-            os.rmdir(path)
+    processed_files = False
+
+    for root, dirs, files in os.walk(path, topdown=False):
+        root_path = Path(root)
+
+        # Process files first
+        for filename in files:
+            file_path = root_path / filename
+            callback(file_path)
+            processed_files = True
+
+        # Then process directories
+        for dirname in dirs:
+            dir_path = root_path / dirname
+            callback(dir_path)
+
+    # Remove root if requested and it's empty
+    if remove_empty_root and not processed_files:
+        try:
+            path.rmdir()
+        except OSError:
+            pass  # Directory not empty or other error
 
 
-def really_is_dir(path: Path):
-    if path.is_symlink():
-        return False
-    if (
-        path.is_dir()
-    ):  # is_dir() answers False for broken symlinks, and crashes with an OSError on self-symlinks
-        return True
-    return False
+def is_real_directory(path: Path) -> bool:
+    """Check if path is a real directory (not a symlink).
+
+    Args:
+        path: Path to check
+
+    Returns:
+        True if path is a directory and not a symlink
+    """
+    return path.is_dir() and not path.is_symlink()
