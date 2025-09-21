@@ -551,9 +551,8 @@ def format_bytes(byte_count: int) -> str:
         if byte_count < 1024 ** (i + 1) or i == len(suffixes) - 1:
             if i == 0:
                 return f"{byte_count} {suffix}"
-            else:
-                value = byte_count / (1024**i)
-                return f"{value:.2f} {suffix}"
+            value = byte_count / (1024**i)
+            return f"{value:.2f} {suffix}"
 
     # This should never be reached
     return f"{byte_count} B"
@@ -582,6 +581,7 @@ def create_file_with_exclusive_access(
 
     flags = os.O_CREAT
 
+    file_flags = 0
     if mode == "r":
         file_flags = 0
     elif mode == "w":
