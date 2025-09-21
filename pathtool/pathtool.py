@@ -6,7 +6,6 @@
 
 from __future__ import annotations
 
-import fcntl
 import os
 import shutil
 import stat
@@ -14,150 +13,95 @@ import subprocess
 import sys
 import tempfile
 import time
-from collections.abc import Sequence
 from contextlib import contextmanager
 from pathlib import Path
-from shutil import copyfileobj
 
-from asserttool import ic
 from epprint import epprint
-from eprint import eprint
-from globalverbose import gvd
-from hashtool import sha3_256_hash_file
-from psutil import disk_usage
 
 
-class SelfSymlinkError(ValueError):
+class ForceRequiredError(Exception):
     pass
 
 
-def wait_for_path_to_exist(path: Path):
-    eprint(f"waiting for path: {path.as_posix()} to exist")
-    while True:
-        if path.exists():
-            return
-        time.sleep(0.1)
+class SelfSymlinkError(Exception):
+    def __init__(
+        self,
+        target,
+        link_name,
+    ):
+        self.target = target
+        self.link_name = link_name
 
 
-def wait_for_block_special_device_to_exist(
-    *,
-    device: Path,
-    timeout: int = 5,
-):
-    device = Path(device)
-    eprint(f"waiting for block special device: {device.as_posix()} to exist")
-    start = time.time()
-    if path_exists(device):
-        assert path_is_block_special(device, symlink_ok=False)
-        return True
-
-    while not path_exists(device):
-        time.sleep(0.1)
-        if time.time() - start > timeout:
-            raise TimeoutError(
-                f"timeout waiting for block special device: {device} to exist"
-            )
-        if path_is_block_special(device, symlink_ok=False):
-            break
-    return True
+class UnableToSetImmutableError(Exception):
+    pass
 
 
-# def validate_slice(slice_syntax: str):
-#    assert isinstance(slice_syntax, str)
-#    for c in slice_syntax:
-#        if c not in [
-#            "0",
-#            "1",
-#            "2",
-#            "3",
-#            "4",
-#            "5",
-#            "6",
-#            "7",
-#            "8",
-#            "9",
-#            "-",
-#            "[",
-#            "]",
-#            ":",
-#        ]:
-#            raise ValueError(slice_syntax)
-#    return slice_syntax
+def path_is_file(path: Path):
+    # is_file returns False for symlinks to files
+    # path_is_file will return True for symlink to existing file
+    return path.exists() and stat.S_ISREG(os.lstat(path).st_mode)
 
 
-def path_is_dir(path):
-    if os.path.isdir(path):  # could still be a symlink
-        if os.path.islink(path):
-            return False
-        return True
-    return False
+def path_is_dir(path: Path):
+    # is_dir returns False for symlinks to dirs
+    # path_is_dir will return True for symlink to existing dir
+    return path.exists() and stat.S_ISDIR(os.lstat(path).st_mode)
 
 
-def target_generator(
-    target_list,
-    min_free_space: int,
-):
-    ic(min_free_space)
-    for target in target_list:
-        ic(target)
-        if path_exists(target):
-            assert path_is_dir(target)
-            free_space = disk_usage(target).free
-            ic(free_space)
-            if disk_usage(target).free >= min_free_space:
-                yield target
-            else:
-                epprint(
-                    "skipped:",
-                    target,
-                    "<",
-                    min_free_space,
-                )
-    raise FileNotFoundError
+def path_is_symlink(path: Path):
+    return stat.S_ISLNK(os.lstat(path).st_mode)
 
 
-def is_symlink(infile):
-    if os.path.islink(infile):
-        return True
-    return False
+def path_is_dir_or_symlink_to_dir(path: Path):
+    return path.is_dir() or (
+        path.is_symlink() and Path(os.path.realpath(path)).is_dir()
+    )
 
 
-def is_symlink_to_dir(link):
-    if os.path.islink(link):
-        return os.path.isdir(link)
-    return False
+def path_is_file_or_symlink_to_file(path: Path):
+    return path.is_file() or (
+        path.is_symlink() and Path(os.path.realpath(path)).is_file()
+    )
 
 
-def get_symlink_abs_target(link):  # assumes link is unbroken
-    target = os.readlink(link)
-    target_joined = os.path.join(os.path.dirname(link), target)
-    target_file = os.path.realpath(target_joined)
-    return target_file
-
-
-def gurantee_symlink(
-    *,
-    target: Path,
-    link_name: Path,
-    relative: bool,
-):
-    # todo advisorylock
-    if relative:
-        raise NotImplementedError
+def chdir_or_exit(path: Path):
     try:
-        os.symlink(target, link_name)
-    except FileExistsError as e:
-        ic(e)
-        assert Path(link_name).resolve().as_posix() == Path(target).as_posix()
+        os.chdir(path)
+    except Exception as e:
+        epprint("Got Exception: %s", e)
+        epprint("Unable to chdir to: %s Exiting.", path)
+        sys.exit(1)
 
 
-def symlink_or_exit(
+def mkdir_or_exit(
+    folder: Path,
+    confirm: bool = False,
+    mode: int = 0o755,
+):
+    assert isinstance(folder, Path)
+    if folder.exists():
+        if not folder.is_dir():
+            raise ValueError(f"{folder} exists but is not a dir")
+        return
+
+    if confirm:
+        input(f"press enter to os.mkdir({folder})")
+
+    try:
+        os.mkdir(folder, mode=mode)
+    except Exception as e:
+        epprint("Got Exception: %s", e)
+        epprint("Unable to mkdir: %s Exiting.", folder)
+        sys.exit(1)
+
+
+def symlink(
     *,
     target: Path,
     link_name: Path,
     confirm: bool = False,
 ):
-    ic(target, link_name)
 
     if confirm:
         input(f"press enter to os.symlink({target}, {link_name})")
@@ -168,159 +112,22 @@ def symlink_or_exit(
     try:
         os.symlink(target, link_name)
     except Exception as e:
-        eprint("Got Exception: %s", e)
-        eprint(f"Unable to symlink link_name: {link_name} to target: {target} Exiting.")
-        raise e
-
-
-def calculate_relative_symlink_dest(
-    *,
-    target: Path,
-    link_name: Path,
-):
-    # todo, require Path
-    # todo eval https://docs.python.org/3/library/os.path.html#os.path.commonpath
-    if isinstance(target, str):
-        _target = bytes(target, encoding="UTF8")
-    else:
-        assert isinstance(target, Path)
-        _target = os.fsencode(target)
-
-    if isinstance(link_name, str):
-        _link_name = bytes(link_name, encoding="UTF8")
-    else:
-        assert isinstance(link_name, Path)
-        _link_name = os.fsencode(link_name)
-
-    # paths are bytes. this must work for all possible paths
-    assert isinstance(_target, bytes)
-    assert isinstance(_link_name, bytes)
-    # ceprint("target:", target)
-
-    assert not _target.startswith(b"../")
-    # got relative target, that's hard to deal with pass in a fully qualified path
-    # if target is also an existing symlink, detect that and dont call realpath()
-    # call something that gets the realpath but does not follow any links
-
-    if is_unbroken_symlink(_target):
-        # the target is also a symlink, dont resolve it, just get it's abspath
-        target_realpath = os.path.abspath(_target)
-        # still a problem, since this was not fully resolved, it may still have symlinks embedded in it
-        # get the folder, resolve that since it's guranteed not to be a symlink
-        target_realpath_folder = b"/".join(target_realpath.split(b"/")[:-1])
-        # ceprint("target_realpath_folder:", target_realpath_folder)
-        target_realpath_file = target_realpath.split(b"/")[-1]
-        # ceprint("target_realpath_file:", target_realpath_file)
-        target_realpath_folder_realpath = os.path.realpath(target_realpath_folder)
-        target_realpath = os.path.join(
-            target_realpath_folder_realpath, target_realpath_file
-        )
-        # uug. ok now.
-
-    elif path_exists(_target):
-        # target is prob a file or dir, but could still be a broken symlink
-        target_realpath = os.path.realpath(_target)
-
-    elif is_broken_symlink(_link_name):
-        assert False
-
-    else:  # idk
-        assert False
-
-    if is_broken_symlink(_link_name):
-        link_name_realpath = os.path.realpath(_link_name)
-        # ceprint("link_name_realpath:", link_name_realpath)
-    elif not path_exists(_link_name):
-        link_name_realpath = os.path.realpath(_link_name)
-        # ceprint("link_name_realpath:", link_name_realpath)
-
-    # if its a unbroken symlink, and this is being used to see if its the shortest dest
-    # os.path.realpath() cant be called, because it resolves the existing link to the target
-    elif is_unbroken_symlink(_link_name):
-        link_name_realpath = os.path.abspath(_link_name)
-        # ceprint("link_name_realpath: (abspath)", link_name_realpath)
-        # at this point, all is still not well.
-        # link_name_realpath was actually constructed by abspath()
-        # so if its really on a different filesystem, the link
-        # might not reflect that.
-        # the solution is to call realpath() on link_name_realpath_folder
-        # since its not a symlink, this will work as expected
-    else:
-        assert False
-
-    if not path_exists(target_realpath):
-        ic(target_realpath, "does not exist. Refusing to make broken symlink.")
-        raise FileNotFoundError
-
-    if is_broken_symlink(link_name_realpath):
-        ic(
-            link_name_realpath,
-            "exists as a broken symlink. Remove it before trying to make a new symlink. Exiting.",
+        epprint(
+            f"error symlinking:\ntarget:    {target}\nlink_name: {link_name}\nerror: {e}"
         )
         sys.exit(1)
 
-    link_name_realpath_folder = b"/".join(link_name_realpath.split(b"/")[:-1])
-    # ceprint("link_name_realpath_folder:", link_name_realpath_folder)
-    link_name_realpath_folder_realpath = os.path.realpath(link_name_realpath_folder)
-    # ceprint("link_name_realpath_folder_realpath:", link_name_realpath_folder_realpath)
-    if not os.path.isdir(link_name_realpath_folder_realpath):
-        ic(link_name_realpath_folder_realpath, "does not exist.")
-        raise FileNotFoundError
 
-    relative_target = os.path.relpath(
-        target_realpath, link_name_realpath_folder_realpath
-    )  # relpath does not access the filesystem
-    # ceprint("relative_target:", relative_target)
-    return relative_target
-
-
-def create_relative_symlink(
-    *,
-    target: Path,
-    link_name: Path,
-):
-    relative_target = calculate_relative_symlink_dest(
-        target=target,
-        link_name=link_name,
-    )
-    link_name_realpath = os.path.realpath(link_name)
-    os.symlink(relative_target, link_name_realpath)
-
-
-def symlink_destination(link):  # broken for multi level symlinks
-    return os.path.realpath(link)
-    # ceprint("this function is unreliable. fix it. it can loop forever.")
-    # ceprint(link)
-    # """
-    # Return absolute path for the destination of a symlink. This prob should be split into "first dest" and "final dest"
-    # """
-    ##assert (os.path.islink(link))
-    # p = link
-    # while os.path.islink(p):
-    #    p = os.path.normpath(os.readlink(link))  # huah?
-    #    if os.path.isabs(p):
-    #        return p
-    #    else:
-    #        p = os.path.join(os.path.dirname(link), p)
-    # dest = os.path.realpath(p)
-    # return dest
-
-
-def readlinkf(path):  # ugly
-    p = subprocess.Popen(
-        ["readlink", "-f", path], stdout=subprocess.PIPE, stderr=subprocess.PIPE
-    )
-    readlink_output, errors = p.communicate()
-    readlink_output_clean = readlink_output.strip()
-    if errors:
-        raise ValueError(errors)
-    return readlink_output_clean
+def symlink_final_resolved_path(path: Path) -> Path:
+    if os.path.islink(path):
+        _path = Path(os.path.realpath(path))
+    else:
+        _path = path
+    return _path
 
 
 def get_abs_path_of_first_symlink_target(path):
-    ic(path)
     link_target = os.readlink(path)
-    ic(link_target)
     # assert link_target
     link_dir = os.path.dirname(path)
     link_first_target_abs = os.path.join(link_dir, link_target)
@@ -330,7 +137,6 @@ def get_abs_path_of_first_symlink_target(path):
     link_first_target_abs_normpath_abspath = os.path.abspath(
         link_first_target_abs_normpath
     )
-    ic(link_first_target_abs_normpath_abspath)
     return link_first_target_abs_normpath_abspath
 
 
@@ -350,6 +156,14 @@ def get_symlink_target_final(path):  # broken for bytes
     return target_file
 
 
+def readlinkf(path):  # portable replacement for `readlink -f`
+    # Use pathlib to resolve as much as possible without requiring the target to exist.
+    p = Path(path)
+    resolved = p.resolve(strict=False)
+    # Maintain bytes return type for backward compatibility with callers that decode.
+    return os.fsencode(str(resolved))
+
+
 def is_broken_symlink(path):
     if os.path.islink(path):  # path is a symlink
         return not os.path.exists(path)  # returns False for broken symlinks
@@ -362,309 +176,57 @@ def is_unbroken_symlink(path):
     return False  # path isnt a symlink
 
 
-def mkdir_or_exit(
-    folder: Path,
-    confirm: bool,
-    user: None | str = None,
-):
-    ic(folder)
-    if confirm:
-        input(f"press enter to os.makedirs({folder.as_posix()})")
-    try:
-        os.makedirs(folder)
-    except FileExistsError:
-        assert path_is_dir(folder)
-    except Exception as e:
-        ic("Exception:", e)
-        ic(f"Unable to os.mkdir({folder.as_posix()}). Exiting.", folder)
-        sys.exit(1)
-    if user:
-        shutil.chown(folder, user=user, group=user)
-
-
-def comment_out_line_in_file(
+def calculate_relative_symlink_dest(
     *,
-    path,
-    line: str,
-):
-    """
-    add a # to the beginning of all instances of line_to_match
-    iff there is not already a # preceding line_to_match and
-        line_to_match is the only thing on the line
-            except possibly a preceeding # and/or whitespace
-
-    if line_to_match is found and all instances are commented return True
-    if line_to_match is found and all instances already commented return True
-    if line_to_match is not found return False
-    """
-    line_to_match = line
-    del line
-    with open(path, "r", encoding="utf8") as rfh:  # bug should hold the fh
-        lines = rfh.read().splitlines()
-    newlines = []
-    for line_to_check in lines:
-        if line_to_match in line_to_check:
-            line_to_check_stripped = line_to_check.strip()
-            if line_to_check_stripped.startswith("#"):
-                newlines.append(line_to_check)  # match is already commented out
-                continue
-            if line_to_check_stripped == line_to_check:
-                newlines.append("#" + line_to_check)
-                continue
-            newlines.append(line_to_check)
-            continue
-        newlines.append(line_to_check)
-    if lines != newlines:
-        with open(path, "w", encoding="utf8") as rfh:
-            rfh.write("\n".join(newlines) + "\n")
-        return True
-    return True
+    target: Path,
+    link_name: Path,
+) -> str:
+    # Standardize on Path inputs
+    target = Path(target)
+    link_name = Path(link_name)
+    # Require target to exist to preserve previous behavior (no broken symlinks)
+    target_resolved = target.resolve(strict=True)
+    link_dir = link_name.parent.resolve(strict=True)
+    # Relative path from link's directory to target
+    rel = os.path.relpath(target_resolved, start=link_dir)
+    return rel
 
 
-def uncomment_line_in_file(
+def create_relative_symlink(
     *,
-    path: Path,
-    line: str,
+    target: Path,
+    link_name: Path,
 ):
-    """
-    remove # from the beginning of all instances of line_to_match
-    iff there is already a # preceding line_to_match and
-        line_to_match is the only thing on the line
-            except possibly a preceeding # and/or whitespace
-
-    if line_to_match is found and all instances uncommented return True
-    if line_to_match is found and all instances already uncommented return True
-    if line_to_match is not found return False
-    """
-    line_to_match = line
-    del line
-    with open(path, "r", encoding="utf8") as rfh:  # bug should hold the fh
-        lines = rfh.read().splitlines()
-    newlines = []
-    uncommented = False
-    for line in lines:
-        if line_to_match in line:
-            line_stripped = line.strip()
-            if line_stripped.startswith("#"):
-                newlines.append(line[1:])
-                uncommented = True
-                continue
-            if line_stripped == line:
-                newlines.append(line)
-                uncommented = True
-                continue
-            newlines.append(line)
-            continue
-        newlines.append(line)
-    if lines != newlines:
-        with open(path, "w", encoding="utf8") as rfh:
-            rfh.write("\n".join(newlines) + "\n")
-        return True
-    if uncommented:
-        return True
-    return False
+    # Compute a stable relative target and create the link atomically when possible.
+    rel = calculate_relative_symlink_dest(target=target, link_name=link_name)
+    link_path = Path(link_name)
+    link_path.unlink(missing_ok=True)
+    link_path.symlink_to(rel)
 
 
-# @retry_on_exception(
-#    exception=PermissionError,
-#    # errno=errno.EPERM,
-# )
-## @retry_on_exception(
-##    exception=OSError,
-##    errno=errno.ENOSPC,
-## )
-## @retry_on_exception(
-##    exception=Exception,
-## )
-# def write_line_to_file(
-#    *,
-#    line: str | bytes,
-#    path: Path,
-#    unique: bool = False,
-#    make_new_if_necessary: bool = True,
-#    unlink_first: bool = False,
-# ) -> bool:
-#    """
-#    Write line to path
-#    if unique_line == True, write line iff line not in path.
-#    """
-#    path = Path(path).expanduser()
-#
-#    if isinstance(line, str):
-#        line = line.encode("UTF8")
-#    assert isinstance(line, bytes)
-#    assert line.count(b"\n") == 1
-#    assert line.endswith(b"\n")
-#    icp(
-#        line,
-#        path,
-#        unique,
-#        make_new_if_necessary,
-#        unlink_first,
-#    )
-#
-#    if unlink_first:
-#        assert not unique
-#        try:
-#            os.unlink(path)
-#        except FileNotFoundError:
-#            pass  # race condition
-#        with open(path, "xb") as fh:
-#            if not unique:
-#                fh.write(line)
-#                return True
-#
-#            if line not in fh:
-#                fh.write(line)
-#                return True
-#            return False
-#    else:
-#        try:
-#            with open(path, "rb+") as fh:
-#                if not unique:
-#                    fh.write(line)
-#                    return True
-#
-#                if line not in fh:
-#                    fh.write(line)
-#                    return True
-#                return False
-#
-#        except FileNotFoundError as e:
-#            if make_new_if_necessary:
-#                with open(path, "xb") as fh:
-#                    fh.write(line)
-#                    return True
-#            else:
-#                raise e
-
-
-def line_exists_in_file(
-    *,
-    line: str | bytes,
-    file_to_check,
-):
-    if isinstance(line, str):
-        line = line.encode("UTF8")
-    assert isinstance(line, bytes)
-    assert line.count(b"\n") == 1
-    assert line.endswith(b"\n")
-    with open(file_to_check, "rb") as fh:
-        if line in fh:
-            return True
-        return False
-
-
-def backup_file_if_exists(file_to_backup):
-    timestamp = str(time.time())
-    dest_file = file_to_backup + ".bak." + timestamp
-    try:
-        with open(file_to_backup, "rb") as sf:
-            with open(dest_file, "xb") as df:
-                copyfileobj(sf, df)
-    except FileNotFoundError:
-        pass  # skip backup if file does not exist
-
-
-def read_file_bytes(path):
-    with open(path, "rb") as fh:
-        file_bytes = fh.read()
-    return file_bytes
-
-
-def file_exists_nonzero(infile):
-    if path_is_file(infile):
-        if not empty_file(infile):
-            return True
-    return False
-
-
-def get_file_size(filename):
-    filename = Path(os.fsdecode(filename)).resolve()
-    # filename = Path(filename)
-    size = filename.lstat().st_size
-    # size = os.path.getsize(filename)
-    return size
-
-
-def largest_file(files: Sequence[Path]):
-    largest_file = None
-    largest_file_size = None
-    for file in files:
-        file_size = get_file_size(file)
-        if largest_file_size is None:
-            largest_file_size = file_size
-            largest_file = file
-        elif file_size > largest_file_size:
-            largest_file = file
-            largest_file_size = file_size
-
-    return largest_file
-
-
-def points_to_data(
-    path: Path,
-    *,
-    empty_ok: bool = False,
-):
-    # assert isinstance(path, Path)
-    try:
-        size = os.path.getsize(
-            path
-        )  # annoyingly, os.stat(False) == os.stat(0) == os.stat('/dev/stdout')
-    except FileNotFoundError:
-        return False
-    if empty_ok:
-        return True
-    if size > 0:
-        return True
-    return False
-
-
-def empty_file(path: Path):
-    assert isinstance(path, Path)
-    if not path_exists(path):
-        # return True #hm
-        raise FileNotFoundError
-    if os.path.isfile(path):
-        if os.path.getsize(path) == 0:
-            return True
-    return False
-
-
-class UnableToSetImmutableError(ValueError):
-    pass
-
-
-# def remove_immutable_flag(path):
-#    _path = Path(path)
-#    current_flags = _path.lstat()
-
-
-def make_file_not_immutable(path: Path):
-    if path.exists():
-        command = "sudo /usr/bin/chattr -i " + path.as_posix()
-        ic(command)
-        os.system(command)
-        result_command = "/usr/bin/lsattr " + path.as_posix()
-        ic(result_command)
-        result = os.popen(result_command).read()
-        ic(result)
-        if result[4] == "i":
-            epprint(f"make_file_not_immutable({path.as_posix()}) failed")
-            raise UnableToSetImmutableError(command)
-    else:
-        raise FileNotFoundError
+def symlink_destination(link):  # broken for multi level symlinks
+    return os.path.realpath(link)
 
 
 def make_file_immutable(path: Path):
-    command = "sudo /usr/bin/chattr +i " + path.as_posix()
-    os.system(command)
-    result_command = "/usr/bin/lsattr " + path.as_posix()
-    result = os.popen(result_command).read()
-    if result[4] != "i":
+    # Do not escalate privileges here; caller should have permission.
+    result = subprocess.run(
+        ["/usr/bin/chattr", "+i", path.as_posix()],
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode != 0:
+        raise UnableToSetImmutableError(result.stderr or result.stdout)
+    check = subprocess.run(
+        ["/usr/bin/lsattr", "--", path.as_posix()],
+        capture_output=True,
+        text=True,
+    )
+    # Parse flags from the first whitespace-separated field
+    flags = check.stdout.split()[0] if check.stdout else ""
+    if "i" not in flags:
         epprint(f"make_file_immutable({path.as_posix()}) failed")
-        raise UnableToSetImmutableError(command)
+        raise UnableToSetImmutableError(check.stdout or check.stderr)
 
 
 def delete_file_and_recreate_empty_immutable(path: str | Path):
@@ -679,69 +241,40 @@ def delete_file_and_recreate_empty_immutable(path: str | Path):
     make_file_immutable(path=path)
 
 
-def rename_or_exit(src, dest):
-    try:
-        os.rename(src, dest)
-    except Exception as e:
-        epprint("Got Exception: %s", e)
-        epprint("Unable to rename src: %s to dest: %s Exiting.", src, dest)
-        sys.exit(1)
-
-
-def write_file(infile, data):
-    assert len(data) > 0
-    # On Py3 we have one text type, str which holds Unicode data and two byte types; bytes and bytearray.
-    if isinstance(data, str):  # unicode in py3
-        with open(infile, "x", encoding="utf-8") as fd:
-            fd.write(data)
-    elif isinstance(data, bytes):
-        with open(infile, "xb") as fd:
-            fd.write(data)
-    else:
-        epprint(
-            "Unknown type for data: %s. Could not create python file descriptor: %s Exiting.",
-            type(data),
-            infile,
+def make_file_not_immutable(path: Path):
+    if path.exists():
+        # Do not use sudo; assume caller has rights.
+        result = subprocess.run(
+            ["/usr/bin/chattr", "-i", path.as_posix()],
+            capture_output=True,
+            text=True,
         )
-        os._exit(1)
+        if result.returncode != 0:
+            raise UnableToSetImmutableError(result.stderr or result.stdout)
+        check = subprocess.run(
+            ["/usr/bin/lsattr", "--", path.as_posix()],
+            capture_output=True,
+            text=True,
+        )
+        flags = check.stdout.split()[0] if check.stdout else ""
+        if "i" in flags:
+            epprint(f"make_file_not_immutable({path.as_posix()}) failed")
+            raise UnableToSetImmutableError(check.stdout or check.stderr)
+    else:
+        raise FileNotFoundError
 
 
-def is_regular_file(path):
-    mode = os.stat(path, follow_symlinks=False)[stat.ST_MODE]
-    if stat.S_ISREG(mode):
-        return True
-    return False
+def get_disk_free_bytes(path: Path) -> int:
+    s = os.statvfs(path.as_posix())
+    return s.f_frsize * s.f_bavail
 
 
-def combine_files(
-    source: Path,
-    destination: Path,
-    buffer: int = 65535,
-):
-    assert is_regular_file(source)
-    assert is_regular_file(destination)
-    with open(source, "rb") as sfh:
-        fcntl.flock(sfh, fcntl.LOCK_SH)
-        with open(destination, "ab") as dfh:
-            fcntl.flock(dfh, fcntl.LOCK_EX)
-            while True:
-                data = sfh.read(buffer)
-                if data:
-                    dfh.write(data)
-                else:
-                    break
-
-
-# todo
-# https://github.com/MostAwesomeDude/betterpath/blob/master/bp/filepath.py
-# https://github.com/twisted/twisted/blob/trunk/twisted/python/filepath.py
 # https://stackoverflow.com/questions/1430446/create-a-temporary-fifo-named-pipe-in-python
 @contextmanager
 def temp_fifo():
     """Context Manager for creating named pipes with temporary names."""
     tmpdir = tempfile.mkdtemp()
     filename = os.path.join(tmpdir, "fifo")  # Temporary filename
-    ic(filename)
     os.mkfifo(filename)  # Create FIFO
     try:
         yield filename
@@ -752,8 +285,9 @@ def temp_fifo():
 
 def get_free_space_at_path(path: Path):
     assert isinstance(path, Path)
-    free_bytes = os.statvfs(path).f_ffree
-    ic(path, free_bytes)
+    st = os.statvfs(path)
+    # Free bytes available to unprivileged processes
+    free_bytes = st.f_bavail * st.f_frsize
     assert isinstance(free_bytes, int)
     return free_bytes
 
@@ -761,20 +295,18 @@ def get_free_space_at_path(path: Path):
 def get_path_with_most_free_space(
     pathlist: list[Path],
 ):
-    ic(pathlist)
     assert isinstance(pathlist, (list, tuple))
     largest: None | tuple[int, Path] = None
     for path in pathlist:
         free_bytes: int = get_free_space_at_path(
             path=path,
         )
-        ic(path, free_bytes)
-        if not largest:
+        if largest is None:
             largest = (free_bytes, path)
             continue
         if free_bytes > largest[0]:
             largest = (free_bytes, path)
-    ic(largest)
+
     if largest:
         return Path(largest[1])
     raise ValueError
@@ -792,149 +324,131 @@ def longest_prefix(iter0, iter1):
     return _longest_prefix
 
 
-def paths_are_identical(
-    path1: Path,
-    path2: Path,
-    *,
-    time: bool = False,
-    perms: bool = False,
+def __is_disk_device(d: str):
+    # quick and dirty
+    assert d.count("/") < 2
+    d = d.replace("/dev/", "")
+    assert "/" not in d
+    assert d.isalnum()
+    assert d.lower() == d  # disallow uppercase
+    disknames = [
+        "mmcblk0",
+        "sda",
+        "sdb",
+        "sdc",
+        "sdd",
+        "sde",
+        "sdf",
+        "sdg",
+        "sdh",
+        "sdi",
+        "nvme0n1",
+        "nvme1n1",
+        "nvme2n1",
+    ]
+    return d in disknames
+
+
+def get_avail_for_user(path: Path) -> int:
+    assert isinstance(path, Path)
+    # The number of free blocks available to a non-super user:
+    DISKFREE = shutil.disk_usage(path.as_posix())
+    # t = os.statvfs(path.as_posix())
+    # return t.f_bavail * t.f_bsize
+    return DISKFREE.free
+
+
+def get_pretty_bytes_string(byte_count: int) -> str:
+    assert isinstance(byte_count, int)
+    suffixes = {
+        0: "B",
+        1: "KiB",
+        2: "MiB",
+        3: "GiB",
+        4: "TiB",
+        5: "PiB",
+        6: "EiB",
+        7: "ZiB",
+        8: "YiB",
+    }
+
+    i = 0
+    while byte_count > 1024**i and i in suffixes:
+        i += 1
+    i -= 1
+    assert i in suffixes
+    rv = ("%.3f" % (byte_count / (1024**i))) + " " + suffixes[i]
+    return rv
+
+
+def touch_file_notify(
+    fpath,
+    args="r",
+    timeout=1,
 ):
-    assert isinstance(path1, Path)
-    assert isinstance(path2, Path)
-    if time or perms:
-        raise NotImplementedError
+    assert args in {
+        "r",
+        "w",
+        "x",
+    }  # r: read, w: write, x: exclusive
+    assert os.path.isabs(fpath)
 
-    path1_lstat = os.lstat(path1)
-    path2_lstat = os.lstat(path2)
+    while True:
+        flags = os.O_CREAT
 
-    path1_type = stat.S_IFMT(path1_lstat.st_mode)
-    path2_type = stat.S_IFMT(path2_lstat.st_mode)
+        if args == "r":
+            fflags = 0
+        elif args == "w":
+            fflags = os.O_TRUNC
+        elif args == "x":
+            fflags = os.O_EXCL
+        else:
+            assert False
 
-    if path1_type != path2_type:
-        ic(path1, path1_type)
-        ic(path2, path2_type)
-        return False
+        try:
+            fd = os.open(fpath, fflags | flags)
+            break
+        except Exception as e:
+            if e.errno == 17:
+                # file exists
+                if args == "x":
+                    time.sleep(timeout)
+                else:
+                    break
 
-    if path1_type in [32768, 24576]:  # file or device
-        path1_hash = sha3_256_hash_file(path1)
-        path2_hash = sha3_256_hash_file(path2)
-        if gvd:
-            ic(path1_hash.hex())
-            ic(path2_hash.hex())
-
-        if path1_hash != path2_hash:
-            ic(path1, path1_hash.hex())
-            ic(path2, path2_hash.hex())
-            return False
-
-    if path1_type == 40960:  # symlink
-        path1_target = os.readlink(path1)
-        path2_target = os.readlink(path2)
-        ic(path1_target)
-        ic(path2_target)
-
-        if path1_target != path2_target:
-            ic(path1, path1_target)
-            ic(path2, path2_target)
-            return False
-
-    return True
+    os.close(fd)
 
 
-def path_is_dir_or_symlink_to_dir(path):
-    # unlike os.path.exists(False), os.path.isdir(False) returns False
-    if os.path.isdir(path):  # returns False if it's a symlink to a file
-        return True
-    return False
-
-
-def path_exists(path):
-    if path is None:
-        return False
-    return os.path.lexists(path)  #  returns True for broken symlinks
-
-
-def path_is_block_special(
+def dir_walk(
     path: Path,
-    *,
-    symlink_ok: bool,
+    function,
+    remove_root: bool,
+    include_root: bool,
 ):
-    if path_exists(path):
-        mode = os.stat(path, follow_symlinks=symlink_ok).st_mode
-        if stat.S_ISBLK(mode):
-            return True
-    return False
-
-
-def path_is_block_special_or_symlink_to_block_special(
-    path: Path,
-):
-    return path_is_block_special(path, symlink_ok=True)
-
-
-def path_is_file(path: Path):
-    if not isinstance(path, Path):
-        path = Path(path).expanduser()
-    if path.is_symlink():
-        return False
-
-    # unlike os.path.exists(False), os.path.isfile(False) returns False so no need to call path_exists() first.
-    if os.path.isfile(path):
-        return True
-    return False
-
-
-def check_or_create_dir(folder, confirm: bool = True):
-    # assert isinstance(folder, bytes)
-    if not os.path.isdir(folder):
-        if confirm:
-            epprint("The folder:")
-            epprint(folder)
-            epprint(
-                "does not exist. Type yes to create it and continue, otherwise exiting:"
-            )
-            epprint("make dir:")
-            epprint(folder, end=None)
-            make_folder_answer = input(": ")
-            if make_folder_answer.lower() != "yes":
-                epprint("Exiting before mkdir.")
-                os._exit(1)
-        os.makedirs(folder)
-        return True
-
-
-def chdir_or_exit(targetdir):
-    try:
-        os.chdir(targetdir)
-    except Exception as e:
-        epprint("Exception:", e)
-        epprint("Unable to os.chdir(%s). Enxiting.", targetdir)
-        os._exit(1)
-    return True
-
-
-def remove_empty_folders(
-    path,
-    remove_root=True,
-):
-    if not os.path.isdir(path):
+    assert isinstance(path, Path)
+    if not path.exists():
         return
 
-    # remove empty subfolders
-    files = os.listdir(path)
-    if len(files):
-        for f in files:
-            fullpath = os.path.join(path, f)
-            if os.path.isdir(fullpath):
-                if not os.path.islink(fullpath):
-                    remove_empty_folders(fullpath)
+    assert path.is_dir()
 
-    # if folder empty, delete it
-    files = os.listdir(path)
-    if len(files) == 0 and remove_root:
-        if ic.enabled:
-            epprint("removing empty folder:", path)
-        os.rmdir(path)
+    if include_root:
+        function(path)
+    files = None
+    for root, dirs, files in os.walk(
+        path,
+        topdown=False,
+    ):
+        _root = Path(root)
+        for name in files:
+            file = _root / Path(name)
+            function(file)
+        for name in dirs:
+            dir_ = _root / Path(name)
+            function(dir_)
+
+    if files is not None:
+        if len(files) == 0 and remove_root:
+            os.rmdir(path)
 
 
 def really_is_dir(path: Path):
