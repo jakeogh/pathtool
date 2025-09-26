@@ -6,6 +6,7 @@ from __future__ import annotations
 import logging
 import os
 import shutil
+import stat
 import subprocess
 import sys
 import tempfile
@@ -14,6 +15,8 @@ from contextlib import contextmanager
 from pathlib import Path
 from typing import Iterator
 from typing import Union
+
+from eprint import eprint
 
 logger = logging.getLogger(__name__)
 
@@ -45,21 +48,98 @@ class UnableToSetImmutableError(Exception):
     pass
 
 
-def path_is_block_special(path: Path) -> bool:
-    """
-    Return True if the given path is a block special file (e.g. /dev/sda).
+def _kind_from_mode(mode: int) -> str:
+    """Human-readable file kind from st_mode (lstat)."""
+    if stat.S_ISBLK(mode):
+        return "block special"
+    if stat.S_ISCHR(mode):
+        return "character special"
+    if stat.S_ISDIR(mode):
+        return "directory"
+    if stat.S_ISFIFO(mode):
+        return "FIFO/pipe"
+    if stat.S_ISLNK(mode):
+        return "symlink"
+    if stat.S_ISREG(mode):
+        return "regular file"
+    if stat.S_ISSOCK(mode):
+        return "socket"
+    return f"unknown (mode=0o{mode:o})"
 
-    Args:
-        path: Path to check.
+
+def wait_for_block_special_device_to_exist(
+    *,
+    device: Path,
+    timeout: float = 5.0,
+    poll: float = 0.10,
+) -> bool:
+    """
+    Wait until `device` exists and is a *block special* node.
+
+    This function does NOT follow symlinks. `/dev/foo` must itself be a block device.
 
     Returns:
-        bool: True if the path exists and is a block device, False otherwise.
+        True on success.
+
+    Raises:
+        TimeoutError: if the condition isn't met within `timeout`.
+        TypeError, ValueError: on bad arguments.
+    """
+    if not isinstance(device, Path):
+        raise TypeError(f"device must be pathlib.Path, not {type(device)}")
+    if not isinstance(timeout, (int, float)) or timeout <= 0:
+        raise ValueError(f"timeout must be > 0, got {timeout!r}")
+    if not isinstance(poll, (int, float)) or poll <= 0:
+        raise ValueError(f"poll must be > 0, got {poll!r}")
+
+    eprint(
+        f"waiting for block special device (no symlinks): {device.as_posix()} "
+        f"(timeout={timeout:.2f}s, poll={poll:.2f}s)"
+    )
+
+    if path_is_block_special(device):
+        eprint(f"device is ready: {device}")
+        return True
+
+    deadline = time.monotonic() + timeout
+    last_mode: int | None = None  # for better diagnostics
+
+    while True:
+        time.sleep(poll)
+
+        try:
+            st = os.lstat(device)  # never follow symlinks
+            last_mode = st.st_mode
+        except (FileNotFoundError, NotADirectoryError, PermissionError):
+            st = None
+
+        if st is not None and stat.S_ISBLK(st.st_mode):
+            eprint(f"device is ready: {device}")
+            return True
+
+        if time.monotonic() >= deadline:
+            if st is None:
+                raise TimeoutError(
+                    f"timeout: device not found: {device} (no symlink following)"
+                )
+            else:
+                raise TimeoutError(
+                    f"timeout: {device} exists but is { _kind_from_mode(last_mode) }; "
+                    f"required: block special (no symlink following)"
+                )
+
+
+def path_is_block_special(path: Path) -> bool:
+    """
+    Return True iff `path` itself (not its target) is a block special file.
+
+    Uses os.lstat() so symlinks are *not* followed.
     """
     if not isinstance(path, Path):
-        raise TypeError(f"path must be a pathlib.Path, not {type(path)}")
+        raise TypeError(f"path must be pathlib.Path, not {type(path)}")
     try:
-        mode = os.stat(path).st_mode
-    except FileNotFoundError:
+        mode = os.lstat(path).st_mode  # do NOT follow symlinks
+    except (FileNotFoundError, NotADirectoryError, PermissionError):
         return False
     return stat.S_ISBLK(mode)
 
