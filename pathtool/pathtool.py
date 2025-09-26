@@ -45,6 +45,25 @@ class UnableToSetImmutableError(Exception):
     pass
 
 
+def path_is_block_special(path: Path) -> bool:
+    """
+    Return True if the given path is a block special file (e.g. /dev/sda).
+
+    Args:
+        path: Path to check.
+
+    Returns:
+        bool: True if the path exists and is a block device, False otherwise.
+    """
+    if not isinstance(path, Path):
+        raise TypeError(f"path must be a pathlib.Path, not {type(path)}")
+    try:
+        mode = os.stat(path).st_mode
+    except FileNotFoundError:
+        return False
+    return stat.S_ISBLK(mode)
+
+
 def path_is_file(path: Path) -> bool:
     """Return True if path exists and is a regular file (including symlinks to files).
 
