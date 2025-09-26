@@ -38,3 +38,6 @@ from .pathtool import path_is_block_special as path_is_block_special
 from .pathtool import resolve_symlink_final as resolve_symlink_final
 from .pathtool import temp_fifo as temp_fifo
 from .pathtool import walk_directory as walk_directory
+from .pathtool import (
+    wait_for_block_special_device_to_exist as wait_for_block_special_device_to_exist,
+)
