@@ -129,19 +129,27 @@ def wait_for_block_special_device_to_exist(
                 )
 
 
-def path_is_block_special(path: Path) -> bool:
-    """
-    Return True iff `path` itself (not its target) is a block special file.
 
-    Uses os.lstat() so symlinks are *not* followed.
+
+def path_is_block_special(path: Path, symlink_ok: bool) -> bool:
+    """
+    Return True iff `path` refers to a block special file.
+
+    If symlink_ok is False (default), only the path itself is inspected and
+    symlinks are not followed (uses os.lstat()).
+    If symlink_ok is True, symlinks are followed and the target is inspected
+    (uses os.stat()).
     """
     if not isinstance(path, Path):
         raise TypeError(f"path must be pathlib.Path, not {type(path)}")
+
     try:
-        mode = os.lstat(path).st_mode  # do NOT follow symlinks
+        st = os.stat(path, follow_symlinks=symlink_ok)
     except (FileNotFoundError, NotADirectoryError, PermissionError):
         return False
-    return stat.S_ISBLK(mode)
+
+    return stat.S_ISBLK(st.st_mode)
+
 
 
 def path_is_file(path: Path) -> bool:
