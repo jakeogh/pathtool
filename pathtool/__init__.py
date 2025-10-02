@@ -30,6 +30,7 @@ from .pathtool import make_file_immutable as make_file_immutable
 from .pathtool import make_file_not_immutable as make_file_not_immutable
 from .pathtool import mkdir_or_exit as mkdir_or_exit
 from .pathtool import path_is_dir as path_is_dir
+from .pathtool import file_exists_nonzero as file_exists_nonzero
 from .pathtool import path_is_dir_or_symlink_to_dir as path_is_dir_or_symlink_to_dir
 from .pathtool import path_is_file as path_is_file
 from .pathtool import path_is_file_or_symlink_to_file as path_is_file_or_symlink_to_file
