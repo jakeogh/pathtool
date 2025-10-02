@@ -129,8 +129,6 @@ def wait_for_block_special_device_to_exist(
                 )
 
 
-
-
 def path_is_block_special(path: Path, symlink_ok: bool) -> bool:
     """
     Return True iff `path` refers to a block special file.
@@ -149,7 +147,6 @@ def path_is_block_special(path: Path, symlink_ok: bool) -> bool:
         return False
 
     return stat.S_ISBLK(st.st_mode)
-
 
 
 def path_is_file(path: Path) -> bool:
@@ -213,6 +210,16 @@ def path_is_file_or_symlink_to_file(path: Path) -> bool:
         True if path is a file or symlink to an existing file
     """
     return path.is_file() or (path.is_symlink() and path.resolve().is_file())
+
+
+def file_exists_non_zero(path: Path) -> bool:
+    """
+    Return True if `path` exists, is a file, and has non-zero size.
+    """
+    if not isinstance(path, Path):
+        raise TypeError(f"path must be pathlib.Path, not {type(path)}")
+
+    return path.is_file() and path.stat().st_size > 0
 
 
 def chdir_or_exit(path: Path) -> None:
