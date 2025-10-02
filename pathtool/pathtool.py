@@ -212,7 +212,7 @@ def path_is_file_or_symlink_to_file(path: Path) -> bool:
     return path.is_file() or (path.is_symlink() and path.resolve().is_file())
 
 
-def file_exists_non_zero(path: Path) -> bool:
+def file_exists_nonzero(path: Path) -> bool:
     """
     Return True if `path` exists, is a file, and has non-zero size.
     """
