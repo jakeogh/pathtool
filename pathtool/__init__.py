@@ -19,6 +19,7 @@ from .pathtool import (
 )
 from .pathtool import format_bytes as format_bytes
 from .pathtool import get_free_space as get_free_space
+from .pathtool import is_empty_file as is_empty_file
 from .pathtool import get_path_with_most_free_space as get_path_with_most_free_space
 from .pathtool import get_symlink_target as get_symlink_target
 from .pathtool import is_broken_symlink as is_broken_symlink
