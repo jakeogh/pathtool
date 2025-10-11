@@ -722,6 +722,13 @@ def create_file_with_exclusive_access(
             raise
 
 
+def is_empty_file(path: Path) -> bool:
+    """Return True if the given path is a file and has size 0 bytes."""
+    if not isinstance(path, Path):
+        raise TypeError(f"Expected Path, got {type(path).__name__}")
+    return path.is_file() and path.stat().st_size == 0
+
+
 def walk_directory(
     path: Path,
     callback: callable,
