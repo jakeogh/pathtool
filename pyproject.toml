@@ -1,0 +1,33 @@
+[build-system]
+requires = [
+    "setuptools>=61.0",
+]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pathtool"
+version = "0.1"
+description = "Short explination of what it does _here_"
+authors = [
+    { name = "Justin Keogh", email = "github.com@v6y.net" },
+]
+dependencies = [
+    "hashtool @ git+https://git@github.com/jakeogh/hashtool",
+    "psutil",
+]
+requires-python = ">=3.11"
+
+[project.license]
+text = "ISC"
+
+[project.urls]
+Homepage = "https://github.com/jakeogh/pathtool"
+
+[tool.setuptools]
+include-package-data = true
+zip-safe = false
+
+[tool.setuptools.package-data]
+pathtool = [
+    "py.typed",
+]
