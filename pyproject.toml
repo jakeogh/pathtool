@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "pathtool"
-version = "0.1"
+version = "0.0.1760910107"
 description = "Short explination of what it does _here_"
 authors = [
     { name = "Justin Keogh", email = "github.com@v6y.net" },
@@ -15,10 +15,8 @@ dependencies = [
     "hashtool @ git+https://git@github.com/jakeogh/hashtool",
     "psutil",
 ]
+license = "ISC"
 requires-python = ">=3.11"
-
-[project.license]
-text = "ISC"
 
 [project.urls]
 Homepage = "https://github.com/jakeogh/pathtool"
