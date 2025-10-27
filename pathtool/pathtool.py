@@ -783,3 +783,24 @@ def is_real_directory(path: Path) -> bool:
         True if path is a directory and not a symlink
     """
     return path.is_dir() and not path.is_symlink()
+
+
+def wait_for_path_to_exist(
+    path: Path,
+    *,
+    file_ok: bool,
+    dir_ok: bool,
+    timeout: None | int = None,
+) -> None:
+    """Block until path exists as a file/dir (per file_ok/dir_ok). Raises TimeoutError if timeout exceeded."""
+    start = time.time()
+
+    while True:
+        if path.exists():
+            if (file_ok and path.is_file()) or (dir_ok and path.is_dir()):
+                return
+
+        if timeout is not None and (time.time() - start) >= timeout:
+            raise TimeoutError(f"Path {path} did not appear within {timeout}s")
+
+        time.sleep(0.1)
