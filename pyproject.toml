@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "pathtool"
-version = "1!0.0.1761633539"
+version = "1!0.0.1761639272"
 description = "Short explination of what it does _here_"
 authors = [
     { name = "Justin Keogh", email = "github.com@v6y.net" },

@@ -23,6 +23,7 @@ from .pathtool import is_empty_file as is_empty_file
 from .pathtool import get_path_with_most_free_space as get_path_with_most_free_space
 from .pathtool import get_symlink_target as get_symlink_target
 from .pathtool import is_broken_symlink as is_broken_symlink
+from .pathtool import is_unbroken_symlink as is_unbroken_symlink
 from .pathtool import is_disk_device as is_disk_device
 from .pathtool import is_real_directory as is_real_directory
 from .pathtool import is_valid_symlink as is_valid_symlink
