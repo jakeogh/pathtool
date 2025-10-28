@@ -349,6 +349,18 @@ def is_broken_symlink(path: Path) -> bool:
     return path.is_symlink() and not path.exists()
 
 
+def is_unbroken_symlink(path: Path) -> bool:
+    """Check if path is an unbroken symbolic link.
+
+    Args:
+        path: Path to check
+
+    Returns:
+        True if path is a symlink pointing to an existing target
+    """
+    return path.is_symlink() and path.exists()
+
+
 def is_valid_symlink(path: Path) -> bool:
     """Check if path is a valid (unbroken) symbolic link.
 
