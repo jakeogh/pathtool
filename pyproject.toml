@@ -5,7 +5,7 @@ backend-path = ["."]
 
 [project]
 name = "pathtool"
-version = "1!0.0.1761971964"
+version = "1!0.0.1761972080"
 description = "Common path related functions"
 authors = [
     { name = "Justin Keogh", email = "github.com@v6y.net" },
@@ -21,15 +21,11 @@ Homepage = "https://github.com/jakeogh/pathtool"
 include-package-data = true
 zip-safe = false
 
-[tool.setuptools.package-data]
+[tool.pep508-url-version-backend]
 pathtool = [
     "py.typed",
 ]
-dependencies-git = [
-    "eprint @ git+https://git@github.com/jakeogh/eprint",
-]
 
-[tool.pep508-url-version-backend]
 dependencies-indexed = []
 dependencies-git = []
 index-urls = ["jakeogh.github.io", "pip-index"]
