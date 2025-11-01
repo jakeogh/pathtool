@@ -1,20 +1,16 @@
 [build-system]
-requires = [
-    "setuptools>=61.0",
-]
-build-backend = "setuptools.build_meta"
+requires = ["setuptools>=61.0", "tomlkit"]
+build-backend = "pep508_url_version_backend"
+backend-path = ["."]
 
 [project]
 name = "pathtool"
-version = "1!0.0.1761971745"
+version = "1!0.0.1761971964"
 description = "Common path related functions"
 authors = [
     { name = "Justin Keogh", email = "github.com@v6y.net" },
 ]
-dependencies = [
-    "hashtool @ git+https://git@github.com/jakeogh/hashtool",
-    "psutil",
-]
+dependencies = []
 license = "ISC"
 requires-python = ">=3.11"
 
@@ -32,3 +28,8 @@ pathtool = [
 dependencies-git = [
     "eprint @ git+https://git@github.com/jakeogh/eprint",
 ]
+
+[tool.pep508-url-version-backend]
+dependencies-indexed = []
+dependencies-git = []
+index-urls = ["jakeogh.github.io", "pip-index"]
