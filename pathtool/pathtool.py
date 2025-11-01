@@ -188,6 +188,10 @@ def path_is_symlink(path: Path) -> bool:
         return False
 
 
+def path_is_dir_only(path: Path) -> bool:
+    return path.is_dir() and not path.is_symlink()
+
+
 def path_is_dir_or_symlink_to_dir(path: Path) -> bool:
     """Return True if path is a directory or symlink pointing to a directory.
 

@@ -6,8 +6,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "pathtool"
-version = "1!0.0.1761639272"
-description = "Short explination of what it does _here_"
+version = "1!0.0.1761971421"
+description = "Common path related functions"
 authors = [
     { name = "Justin Keogh", email = "github.com@v6y.net" },
 ]
@@ -28,4 +28,9 @@ zip-safe = false
 [tool.setuptools.package-data]
 pathtool = [
     "py.typed",
+]
+dependencies-git = [
+    "hashtool @ git+https://git@github.com/jakeogh/hashtool",
+    "eprint @ git+https://git@github.com/jakeogh/eprint",
+    "psutil",
 ]
