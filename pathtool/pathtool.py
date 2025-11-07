@@ -247,6 +247,7 @@ def mkdir_or_exit(
     folder: Path,
     confirm: bool = False,
     mode: int = 0o755,
+    parents: bool = True,
 ) -> None:
     """Create directory or exit with error message.
 
@@ -267,7 +268,7 @@ def mkdir_or_exit(
         input(f"Press enter to create directory: {folder}")
 
     try:
-        folder.mkdir(mode=mode, parents=False)
+        folder.mkdir(mode=mode, parents=parents)
     except OSError as e:
         logger.error(
             "Failed to create directory %s: %s",
