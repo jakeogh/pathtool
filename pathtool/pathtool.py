@@ -13,6 +13,7 @@ import tempfile
 import time
 from contextlib import contextmanager
 from pathlib import Path
+from typing import Callable
 from typing import Iterator
 from typing import Union
 
@@ -97,7 +98,10 @@ def wait_for_block_special_device_to_exist(
         f"(timeout={timeout:.2f}s, poll={poll:.2f}s)"
     )
 
-    if path_is_block_special(device):
+    if path_is_block_special(
+        device,
+        symlink_ok=False,
+    ):
         eprint(f"device is ready: {device}")
         return True
 
@@ -748,7 +752,7 @@ def is_empty_file(path: Path) -> bool:
 
 def walk_directory(
     path: Path,
-    callback: callable,
+    callback: Callable,
     remove_empty_root: bool = False,
     include_root: bool = False,
 ) -> None:
