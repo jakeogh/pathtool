@@ -825,3 +825,19 @@ def wait_for_path_to_exist(
             raise TimeoutError(f"Path {path} did not appear within {timeout}s")
 
         time.sleep(0.1)
+
+
+def remove_empty_folders(path: Path, *, recursive: bool = True) -> None:
+    """Remove empty directories at path. If recursive, processes subdirectories bottom-up."""
+    if not path.is_dir():
+        return
+
+    if recursive:
+        for item in path.iterdir():
+            if item.is_dir():
+                remove_empty_folders(item, recursive=True)
+
+    try:
+        path.rmdir()
+    except OSError:
+        pass  # Directory not empty or other error

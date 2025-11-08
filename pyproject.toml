@@ -5,7 +5,7 @@ backend-path = ["."]
 
 [project]
 name = "pathtool"
-version = "1!0.0.1762577596"
+version = "1!0.0.1762577857"
 description = "Common path related functions"
 authors = [
     { name = "Justin Keogh", email = "github.com@v6y.net" },
