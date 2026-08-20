@@ -1,17 +1,19 @@
 [build-system]
-requires = ["setuptools>=61.0", "tomlkit"]
-build-backend = "pep508_url_version_backend"
-backend-path = ["."]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
 
 [project]
 name = "pathtool"
-version = "1!0.0.1784691960"
+version = "1!0.0.1787193084"
 description = "Common path related functions"
 authors = [
     { name = "Justin Keogh", email = "github.com@v6y.net" },
 ]
-dependencies = []
 license = "ISC"
+dependencies = [
+    "eprint @ git+https://github.com/jakeogh/eprint@6ee1deca0c24b684eb5093247d6bd22e11f1b057",
+    "hs @ git+https://github.com/jakeogh/hs@b33c88f35cd24e773fea6ca4758193c9e815536d",
+]
 requires-python = ">=3.11"
 
 [project.urls]
@@ -21,11 +23,7 @@ Homepage = "https://github.com/jakeogh/pathtool"
 include-package-data = true
 zip-safe = false
 
-[tool.pep508-url-version-backend]
+[tool.setuptools.package-data]
 pathtool = [
     "py.typed",
 ]
-
-dependencies-indexed = []
-dependencies-git = []
-index-urls = ["jakeogh.github.io", "pip-index"]
