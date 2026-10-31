@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "pathtool"
-version = "1!0.0.1787193084"
+version = "1!0.0.1793488270"
 description = "Common path related functions"
 authors = [
     { name = "Justin Keogh", email = "github.com@v6y.net" },
@@ -12,7 +12,7 @@ authors = [
 license = "ISC"
 dependencies = [
     "eprint @ git+https://github.com/jakeogh/eprint@6ee1deca0c24b684eb5093247d6bd22e11f1b057",
-    "hs @ git+https://github.com/jakeogh/hs@b33c88f35cd24e773fea6ca4758193c9e815536d",
+    "hs @ git+https://github.com/jakeogh/hs@b6f75452351ccc668bc87c6f03d73268ff7a0b24",
 ]
 requires-python = ">=3.11"
 
